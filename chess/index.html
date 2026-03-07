@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>qChess</title>
+
+	<style>
+		:root {
+			--u: 200px;
+			--size: 800px;
+			--piece: 100px;
+
+			--light: #edd6b0;
+			--dark: #b88762;
+
+			--light: #edb;
+			--dark: #b86;
+		}
+
+		.piece img {
+			pointer-events: none;
+			-webkit-user-drag: none;
+			-moz-user-drag: none;
+			-ms-user-drag: none;
+			-webkit-touch-callout: none;
+			-webkit-user-select: none;
+			-khtml-user-select: none;
+			-moz-user-select: none;
+			-ms-user-select: none;
+			user-select: none;
+		}
+
+		#board {
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+
+			width: var(--size);
+			height: var(--size);
+			border: 1px solid black;
+			
+			background:
+				conic-gradient(var(--dark) 25%, var(--light) 0 50%, var(--dark) 0 75%, var(--light) 0);
+			background-size: calc(var(--size) / 4) calc(var(--size) / 4);
+		}
+
+		#squares {
+			position: absolute;
+			top: 0;
+			left: 0;
+
+			display: grid;
+			grid-template-columns: repeat(8, 1fr);
+			grid-template-rows: repeat(8, 1fr);
+
+			div {
+				width: var(--piece);
+				height: var(--piece);
+
+				&.debug {
+					outline: 2px solid blue;
+				}
+			}
+		}
+
+		.piece {
+			position: absolute;
+			bottom: 0;
+			left: 0;
+			width: var(--piece);
+			height: var(--piece);
+
+			transition: transform .3s;
+			transform: translate(
+				calc((var(--f) - 1) * var(--piece)),
+				calc(-1 * (var(--r) - 1) * var(--piece))
+			);
+
+			&.selected {
+				outline: 2px solid black;
+			}
+
+			img {
+				width: 100%;
+				height: 100%;
+				object-fit: contain;
+			}
+		}
+	</style>
+</head>
+<body>
+	
+	<div id="board">
+		<div id="squares">
+			<div id="square-81"></div>
+			<div id="square-82"></div>
+			<div id="square-83"></div>
+			<div id="square-84"></div>
+			<div id="square-85"></div>
+			<div id="square-86"></div>
+			<div id="square-87"></div>
+			<div id="square-88"></div>
+			<div id="square-71"></div>
+			<div id="square-72"></div>
+			<div id="square-73"></div>
+			<div id="square-74"></div>
+			<div id="square-75"></div>
+			<div id="square-76"></div>
+			<div id="square-77"></div>
+			<div id="square-78"></div>
+			<div id="square-61"></div>
+			<div id="square-62"></div>
+			<div id="square-63"></div>
+			<div id="square-64"></div>
+			<div id="square-65"></div>
+			<div id="square-66"></div>
+			<div id="square-67"></div>
+			<div id="square-68"></div>
+			<div id="square-51"></div>
+			<div id="square-52"></div>
+			<div id="square-53"></div>
+			<div id="square-54"></div>
+			<div id="square-55"></div>
+			<div id="square-56"></div>
+			<div id="square-57"></div>
+			<div id="square-58"></div>
+			<div id="square-41"></div>
+			<div id="square-42"></div>
+			<div id="square-43"></div>
+			<div id="square-44"></div>
+			<div id="square-45"></div>
+			<div id="square-46"></div>
+			<div id="square-47"></div>
+			<div id="square-48"></div>
+			<div id="square-31"></div>
+			<div id="square-32"></div>
+			<div id="square-33"></div>
+			<div id="square-34"></div>
+			<div id="square-35"></div>
+			<div id="square-36"></div>
+			<div id="square-37"></div>
+			<div id="square-38"></div>
+			<div id="square-21"></div>
+			<div id="square-22"></div>
+			<div id="square-23"></div>
+			<div id="square-24"></div>
+			<div id="square-25"></div>
+			<div id="square-26"></div>
+			<div id="square-27"></div>
+			<div id="square-28"></div>
+			<div id="square-11"></div>
+			<div id="square-12"></div>
+			<div id="square-13"></div>
+			<div id="square-14"></div>
+			<div id="square-15"></div>
+			<div id="square-16"></div>
+			<div id="square-17"></div>
+			<div id="square-18"></div>
+		</div>
+		<!-- <div class="piece" style="--r: 1; --f: 2;">
+			<img src="/chess/img/150/wp.png">
+		</div> -->
+	</div>
+
+	<script>
+		const state = {
+			turn: 0,
+			selected: null,
+			check: false,
+		}
+		const board = [
+			['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+			['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+			['',  '',  '',  '',  '',  '',  '',  ''],
+			['',  '',  '',  '',  '',  '',  '',  ''],
+			['',  '',  '',  '',  '',  '',  '',  ''],
+			['',  '',  '',  '',  '',  '',  '',  ''],
+			['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+			['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+		];
+
+		function getBoard(r, f) {
+			return board[8 - r][f - 1];
+		}
+
+		function getPos(ele) {
+			const r = parseInt(getComputedStyle(ele).getPropertyValue('--r'));
+			const f = parseInt(getComputedStyle(ele).getPropertyValue('--f'));
+
+			return { r, f };
+		}
+		function getSquare(r, f) {
+			console.log(`square-${r}${f}`);
+			return document.getElementById(`square-${r}${f}`);
+		}
+		function getPiece(r, f) {
+			return document.querySelector(`.piece[style*="--r: ${r}"][style*="--f: ${f}"]`);
+		}
+
+
+		const pieceValues = {
+			'p': 1,
+			'n': 3,
+			'b': 3,
+			'r': 5,
+			'q': 9,
+			'k': 1000
+		}
+		const moveDeltas = {
+			'n': [
+				[2, 1], [2, -1],
+				[-2, 1], [-2, -1],
+				[1, 2], [1, -2],
+				[-1, 2], [-1, -2]
+			],
+			'b': [[1, 1], [1, -1], [-1, 1], [-1, -1]],
+			'r': [[0, 1], [0, -1], [1, 0], [-1, 0]],
+			'q': [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]],
+			'k': [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]]
+		}
+		
+
+		function getLegalMoves(pos) {
+			const piece = getBoard(pos.r, pos.f);
+			if (piece === '') return [];
+			const pType = piece.toLowerCase();
+
+			let moves = [];
+			if (pType === 'p') {
+				const dir = piece === piece.toLowerCase() ? -1 : 1;
+				if (getBoard(pos.r + dir, pos.f) === '') {
+					moves.push([pos.r + dir, pos.f]);
+				}
+			} else if (pType === 'n' || pType === 'k') {
+				for (const [dr, df] of moveDeltas[pType]) {
+					moves.push([pos.r + dr, pos.f + df]);
+				}
+			} else if (pType === 'b' || pType === 'r' || pType === 'q') {
+				for (const [dr, df] of moveDeltas[pType]) {
+					for (let i = 1; i < 8; i++) {
+						moves.push([pos.r + dr * i, pos.f + df * i]);
+					}
+				}
+			}
+
+			moves = moves.filter(m => m[0] >= 1 && m[0] <= 8 && m[1] >= 1 && m[1] <= 8);
+
+			return moves;
+		}
+
+		function legalMove(from, to) {
+			const piece = getBoard(from.r, from.f);
+			if (piece === '') return false;
+		}
+
+		function selectPiece(ele) {
+			document.querySelectorAll('.selected').forEach(e => e.classList.remove('selected'));
+			ele.classList.add('selected');
+		}
+
+		function handlePiece(e) {
+			const piece = e.currentTarget;
+			const pos = getPos(piece);
+			if (state.selected == null || !legalMove(state.selected, pos)) {
+				state.selected = pos;
+				selectPiece(piece);
+
+				clearSquares();
+				const t = getLegalMoves(pos);
+				t.forEach(p => getSquare(...p).classList.add('debug'));
+			}
+		}
+
+		function clearPieces() {
+			document.querySelectorAll('.piece').forEach(p => p.remove());
+		}
+		function clearSquares() {
+			document.querySelectorAll('#squares div').forEach(s => s.classList = '');
+		}
+
+		function loadBoard(board) {
+			const boardEl = document.getElementById('board');
+
+			clearPieces();
+			clearSquares();
+			board.forEach((row, r) => {
+				row.forEach((cell, f) => {
+					if (cell === '') return;
+
+					const piece = document.createElement('div');
+					piece.classList.add('piece');
+					piece.style.setProperty('--r', 8 - r);
+					piece.style.setProperty('--f', f + 1);
+
+					const img = document.createElement('img');
+					img.src = `/chess/img/150/${cell === cell.toLowerCase() ? 'b' : 'w'}${cell.toLowerCase()}.png`;
+					piece.appendChild(img);
+
+					boardEl.appendChild(piece);
+
+					piece.onclick = handlePiece;
+				});
+			});
+		}
+		loadBoard(board);
+
+		// setTimeout(() => {
+		// 	const piece = document.querySelector('.piece');
+		// 	piece.style.setProperty('--r', 4);
+		// }, 1000);
+	</script>
+</body>
+</html>
