@@ -18,7 +18,7 @@
 			--dark: #b86;
 		}
 
-		.piece img {
+		.piece {
 			pointer-events: none;
 			-webkit-user-drag: none;
 			-moz-user-drag: none;
@@ -72,7 +72,7 @@
 			width: var(--piece);
 			height: var(--piece);
 
-			transition: transform .3s;
+			transition: transform .1s;
 			transform: translate(
 				calc((var(--f) - 1) * var(--piece)),
 				calc(-1 * (var(--r) - 1) * var(--piece))
@@ -94,81 +94,95 @@
 	
 	<div id="board">
 		<div id="squares">
-			<div id="square-81"></div>
-			<div id="square-82"></div>
-			<div id="square-83"></div>
-			<div id="square-84"></div>
-			<div id="square-85"></div>
-			<div id="square-86"></div>
-			<div id="square-87"></div>
-			<div id="square-88"></div>
-			<div id="square-71"></div>
-			<div id="square-72"></div>
-			<div id="square-73"></div>
-			<div id="square-74"></div>
-			<div id="square-75"></div>
-			<div id="square-76"></div>
-			<div id="square-77"></div>
-			<div id="square-78"></div>
-			<div id="square-61"></div>
-			<div id="square-62"></div>
-			<div id="square-63"></div>
-			<div id="square-64"></div>
-			<div id="square-65"></div>
-			<div id="square-66"></div>
-			<div id="square-67"></div>
-			<div id="square-68"></div>
-			<div id="square-51"></div>
-			<div id="square-52"></div>
-			<div id="square-53"></div>
-			<div id="square-54"></div>
-			<div id="square-55"></div>
-			<div id="square-56"></div>
-			<div id="square-57"></div>
-			<div id="square-58"></div>
-			<div id="square-41"></div>
-			<div id="square-42"></div>
-			<div id="square-43"></div>
-			<div id="square-44"></div>
-			<div id="square-45"></div>
-			<div id="square-46"></div>
-			<div id="square-47"></div>
-			<div id="square-48"></div>
-			<div id="square-31"></div>
-			<div id="square-32"></div>
-			<div id="square-33"></div>
-			<div id="square-34"></div>
-			<div id="square-35"></div>
-			<div id="square-36"></div>
-			<div id="square-37"></div>
-			<div id="square-38"></div>
-			<div id="square-21"></div>
-			<div id="square-22"></div>
-			<div id="square-23"></div>
-			<div id="square-24"></div>
-			<div id="square-25"></div>
-			<div id="square-26"></div>
-			<div id="square-27"></div>
-			<div id="square-28"></div>
-			<div id="square-11"></div>
-			<div id="square-12"></div>
-			<div id="square-13"></div>
-			<div id="square-14"></div>
-			<div id="square-15"></div>
-			<div id="square-16"></div>
-			<div id="square-17"></div>
 			<div id="square-18"></div>
+			<div id="square-28"></div>
+			<div id="square-38"></div>
+			<div id="square-48"></div>
+			<div id="square-58"></div>
+			<div id="square-68"></div>
+			<div id="square-78"></div>
+			<div id="square-88"></div>
+			<div id="square-17"></div>
+			<div id="square-27"></div>
+			<div id="square-37"></div>
+			<div id="square-47"></div>
+			<div id="square-57"></div>
+			<div id="square-67"></div>
+			<div id="square-77"></div>
+			<div id="square-87"></div>
+			<div id="square-16"></div>
+			<div id="square-26"></div>
+			<div id="square-36"></div>
+			<div id="square-46"></div>
+			<div id="square-56"></div>
+			<div id="square-66"></div>
+			<div id="square-76"></div>
+			<div id="square-86"></div>
+			<div id="square-15"></div>
+			<div id="square-25"></div>
+			<div id="square-35"></div>
+			<div id="square-45"></div>
+			<div id="square-55"></div>
+			<div id="square-65"></div>
+			<div id="square-75"></div>
+			<div id="square-85"></div>
+			<div id="square-14"></div>
+			<div id="square-24"></div>
+			<div id="square-34"></div>
+			<div id="square-44"></div>
+			<div id="square-54"></div>
+			<div id="square-64"></div>
+			<div id="square-74"></div>
+			<div id="square-84"></div>
+			<div id="square-13"></div>
+			<div id="square-23"></div>
+			<div id="square-33"></div>
+			<div id="square-43"></div>
+			<div id="square-53"></div>
+			<div id="square-63"></div>
+			<div id="square-73"></div>
+			<div id="square-83"></div>
+			<div id="square-12"></div>
+			<div id="square-22"></div>
+			<div id="square-32"></div>
+			<div id="square-42"></div>
+			<div id="square-52"></div>
+			<div id="square-62"></div>
+			<div id="square-72"></div>
+			<div id="square-82"></div>
+			<div id="square-11"></div>
+			<div id="square-21"></div>
+			<div id="square-31"></div>
+			<div id="square-41"></div>
+			<div id="square-51"></div>
+			<div id="square-61"></div>
+			<div id="square-71"></div>
+			<div id="square-81"></div>
 		</div>
-		<!-- <div class="piece" style="--r: 1; --f: 2;">
+		<!-- <div class="piece" style="--f: 5; --r: 2;">
 			<img src="/chess/img/150/wp.png">
 		</div> -->
 	</div>
 
 	<script>
+		// file => x
+		// rank => y
+
+		const boardEl = document.getElementById('board');
 		const state = {
 			turn: 0,
 			selected: null,
 			check: false,
+			castling: {
+				w: {
+					k: true,
+					q: true
+				},
+				b: {
+					k: true,
+					q: true
+				}
+			}
 		}
 		const board = [
 			['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
@@ -181,22 +195,32 @@
 			['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
 		];
 
-		function getBoard(r, f) {
+		function getColor(piece) {
+			if (!piece) return null;
+			return piece !== piece.toLowerCase() ? 'w' : 'b';
+		}
+
+		function getBoard(f, r) {
+			if (f < 1 || f > 8 || r < 1 || r > 8) return null;
 			return board[8 - r][f - 1];
 		}
 
 		function getPos(ele) {
-			const r = parseInt(getComputedStyle(ele).getPropertyValue('--r'));
-			const f = parseInt(getComputedStyle(ele).getPropertyValue('--f'));
+			if (ele.id.startsWith('square-')) {
+				const [f, r] = ele.id.slice(7).split('').map(Number);
+				return { f, r};
+			}
 
-			return { r, f };
+			const f = parseInt(getComputedStyle(ele).getPropertyValue('--f'));
+			const r = parseInt(getComputedStyle(ele).getPropertyValue('--r'));
+			
+			return { f, r };
 		}
-		function getSquare(r, f) {
-			console.log(`square-${r}${f}`);
-			return document.getElementById(`square-${r}${f}`);
+		function getSquare(f, r) {
+			return document.getElementById(`square-${f}${r}`);
 		}
-		function getPiece(r, f) {
-			return document.querySelector(`.piece[style*="--r: ${r}"][style*="--f: ${f}"]`);
+		function getPiece(f, r) {
+			return document.querySelector(`.piece[style*="--f: ${f}"][style*="--r: ${r}"]`);
 		}
 
 
@@ -221,26 +245,89 @@
 			'k': [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]]
 		}
 		
+		function simpleMove(from, to) {
+			const piece = getBoard(from.f, from.r);
+			board[8 - to.r][to.f - 1] = piece;
+			board[8 - from.r][from.f - 1] = '';
+
+			const pieceEl = getPiece(from.f, from.r);
+			pieceEl.style.setProperty('--f', to.f);
+			pieceEl.style.setProperty('--r', to.r);
+		}
+
+		function makeMove(from, to) {
+			const piece = getBoard(from.f, from.r);
+			const capture = getBoard(to.f, to.r);
+
+			let defaultMove = true;
+
+			const castlingRank = piece === 'K' ? 1 : 8;
+			if (
+				piece.toLowerCase() === 'k' &&
+				from.f === 5 &&
+				from.r === castlingRank &&
+				to.r === castlingRank &&
+				(to.f === 3 || to.f === 7)
+			) {
+				simpleMove(from, to);
+
+				const rookMoves = {
+					7: [{ f: 8, r: castlingRank }, { f: 6, r: castlingRank }],
+					3: [{ f: 1, r: castlingRank }, { f: 4, r: castlingRank }]
+				};
+
+				const [rookFrom, rookTo] = rookMoves[to.f];
+				simpleMove(rookFrom, rookTo);
+				defaultMove = false;
+			}
+
+			if (capture) {
+				getPiece(to.f, to.r).remove();
+			}
+			if (defaultMove) {
+				simpleMove(from, to)
+			}
+
+			return capture ? capture : null;
+		}
 
 		function getLegalMoves(pos) {
-			const piece = getBoard(pos.r, pos.f);
+			const piece = getBoard(pos.f, pos.r);
 			if (piece === '') return [];
 			const pType = piece.toLowerCase();
+			const color = getColor(piece);
 
 			let moves = [];
 			if (pType === 'p') {
-				const dir = piece === piece.toLowerCase() ? -1 : 1;
-				if (getBoard(pos.r + dir, pos.f) === '') {
-					moves.push([pos.r + dir, pos.f]);
+				const dir = color === 'w' ? 1 : -1;
+				if (getBoard(pos.f, pos.r + dir) === '') {
+					moves.push([pos.f, pos.r + dir]);
 				}
-			} else if (pType === 'n' || pType === 'k') {
-				for (const [dr, df] of moveDeltas[pType]) {
-					moves.push([pos.r + dr, pos.f + df]);
+				if ((pos.r === 2 && dir === 1) || (pos.r === 7 && dir === -1)) {
+					if (getBoard(pos.f, pos.r + 2 * dir) === '') {
+						moves.push([pos.f, pos.r + 2 * dir]);
+					}
 				}
-			} else if (pType === 'b' || pType === 'r' || pType === 'q') {
-				for (const [dr, df] of moveDeltas[pType]) {
-					for (let i = 1; i < 8; i++) {
-						moves.push([pos.r + dr * i, pos.f + df * i]);
+
+				const potentialCaptures = [
+					[pos.f + 1, pos.r + dir],
+					[pos.f - 1, pos.r + dir]
+				];
+				for (const [f, r] of potentialCaptures) {
+					const target = getBoard(f, r);
+					if (target && target !== '' && getColor(target) !== color) {
+						moves.push([f, r]);
+					}
+				}
+			} else {
+				for (const [df, dr] of moveDeltas[pType]) {
+					for (let i = 1; i < (pType === 'n' || pType === 'k' ? 2 : 8); i++) {
+						const potential = getBoard(pos.f + df * i, pos.r + dr * i);
+						if (potential === null || potential !== '') {
+							if (color !== getColor(potential)) moves.push([pos.f + df * i, pos.r + dr * i]);
+							break;
+						}
+						moves.push([pos.f + df * i, pos.r + dr * i]);
 					}
 				}
 			}
@@ -251,8 +338,15 @@
 		}
 
 		function legalMove(from, to) {
-			const piece = getBoard(from.r, from.f);
+			const piece = getBoard(from.f, from.r);
 			if (piece === '') return false;
+
+			const legalMoves = getLegalMoves(from);
+			if (!legalMoves.some(m => m[0] === to.f && m[1] === to.r)) {
+				return false;
+			}
+
+			return true;
 		}
 
 		function selectPiece(ele) {
@@ -260,16 +354,27 @@
 			ele.classList.add('selected');
 		}
 
-		function handlePiece(e) {
-			const piece = e.currentTarget;
-			const pos = getPos(piece);
-			if (state.selected == null || !legalMove(state.selected, pos)) {
-				state.selected = pos;
-				selectPiece(piece);
+		function handleClick(e) {
+			const square = e.currentTarget;
+			const pos = getPos(square);
+			const boardPiece = getBoard(pos.f, pos.r);
+			const piece = getPiece(pos.f, pos.r);
 
-				clearSquares();
-				const t = getLegalMoves(pos);
-				t.forEach(p => getSquare(...p).classList.add('debug'));
+			clearSquares();
+
+			if (state.selected === null || !legalMove(state.selected, pos)) {
+				if (piece) {
+					state.selected = pos;
+					selectPiece(piece);
+
+					const t = getLegalMoves(pos);
+					t.forEach(p => getSquare(...p).classList.add('debug'));
+				} else {
+					state.selected = null;
+				}
+			} else if (state.selected) {
+				if (legalMove(state.selected, pos)) makeMove(state.selected, pos);
+				state.selected = null;
 			}
 		}
 
@@ -278,11 +383,10 @@
 		}
 		function clearSquares() {
 			document.querySelectorAll('#squares div').forEach(s => s.classList = '');
+			document.querySelectorAll('.piece').forEach(s => s.classList = 'piece');
 		}
 
 		function loadBoard(board) {
-			const boardEl = document.getElementById('board');
-
 			clearPieces();
 			clearSquares();
 			board.forEach((row, r) => {
@@ -291,19 +395,32 @@
 
 					const piece = document.createElement('div');
 					piece.classList.add('piece');
-					piece.style.setProperty('--r', 8 - r);
 					piece.style.setProperty('--f', f + 1);
+					piece.style.setProperty('--r', 8 - r);
 
 					const img = document.createElement('img');
 					img.src = `/chess/img/150/${cell === cell.toLowerCase() ? 'b' : 'w'}${cell.toLowerCase()}.png`;
 					piece.appendChild(img);
 
 					boardEl.appendChild(piece);
-
-					piece.onclick = handlePiece;
 				});
 			});
 		}
+
+		document.querySelectorAll('#squares div').forEach(s => s.onclick = handleClick);
+		document.addEventListener('keydown', e => {
+			if (e.key === 'Escape') {
+				state.selected = null;
+				clearSquares();
+			}
+		});
+		document.addEventListener('click', e => {
+			if (e.target?.parentElement !== boardEl && e.target?.parentElement?.parentElement !== boardEl ) {
+				state.selected = null;
+				clearSquares();
+			}
+		});
+
 		loadBoard(board);
 
 		// setTimeout(() => {
