@@ -11,6 +11,9 @@
 			--size: 100vh;
 			--piece: calc(var(--size)/8);
 
+			--bg: #121213;
+			--icon: #777;
+
 			--light: #edd6b0;
 			--dark: #b88762;
 
@@ -21,6 +24,13 @@
 			--hint: rgba(0, 0, 0, 0.14);
 
 			--px: 1px;
+		}
+
+		*[hidden] {
+			display: none !important;
+		}
+		*::-webkit-scrollbar {
+			display: none;
 		}
 
 		.piece {
@@ -37,7 +47,8 @@
 		}
 
 		body {
-			background: #121213;
+			background: var(--bg);
+			overflow: hidden;
 		}
 
 		#board {
@@ -53,6 +64,8 @@
 			background:
 				conic-gradient(var(--dark) 25%, var(--light) 0 50%, var(--dark) 0 75%, var(--light) 0);
 			background-size: calc(var(--size) / 4) calc(var(--size) / 4);
+
+			overflow: hidden;
 		}
 
 		.selected {
@@ -104,6 +117,8 @@
 			width: var(--piece);
 			height: var(--piece);
 
+			z-index: 99;
+
 			transition: transform .1s;
 			transform: translate(
 				calc((var(--f) - 1) * var(--piece)),
@@ -116,14 +131,66 @@
 				object-fit: contain;
 			}
 		}
+
+		#white-promotion { top: 0; }
+		#black-promotion { bottom: 0; }
+		.promotion {
+			position: absolute;
+			left: 0;
+			transform: translateX(calc((var(--f) - 1) * var(--piece)));
+
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			width: var(--piece);
+			
+			background: #fff;
+			outline: calc(var(--piece) * .02) solid #fff;
+			box-shadow: 0 0 calc(var(--piece) * .1) 0 #000;
+			z-index: 9999;
+
+			border-radius: calc(var(--piece) * .01);
+
+			img {
+				width: var(--piece);
+				height: var(--piece);
+				object-fit: contain;
+			}
+			svg {
+				width: 50%;
+				aspect-ratio: 1/1;
+
+				stroke: var(--icon);
+			}
+		}
 	</style>
 </head>
 <body>
-	
+	<svg style="display: none">
+		<symbol id="icon-check" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+			<path d="M4 12.6111L8.92308 17.5L20 6.5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+		</symbol>
+		<symbol id="icon-x" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+			<path d="M6 6L18 18M18 6L6 18" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+		</symbol>
+	</svg>
+
 	<div id="board">
 		<div id="promote">
-			<div class="promotion" id="white-promotion"></div>
-			<div class="promotion" id="black-promotion"></div>
+			<div class="promotion" id="white-promotion" style="--f: 1;">
+				<img onclick="promote('w', 'q')" src="/chess/img/150/wq.png">
+				<img onclick="promote('w', 'n')" src="/chess/img/150/wn.png">
+				<img onclick="promote('w', 'r')" src="/chess/img/150/wr.png">
+				<img onclick="promote('w', 'b')" src="/chess/img/150/wb.png">
+				<svg onclick="cancelPromote()" ><use href="#icon-x"/></svg>
+			</div>
+			<div class="promotion" id="black-promotion" style="--f: 1;">
+				<svg onclick="cancelPromote()" ><use href="#icon-x"/></svg>
+				<img onclick="promote('b', 'b')" src="/chess/img/150/bb.png">
+				<img onclick="promote('b', 'r')" src="/chess/img/150/br.png">
+				<img onclick="promote('b', 'n')" src="/chess/img/150/bn.png">
+				<img onclick="promote('b', 'q')" src="/chess/img/150/bq.png">
+			</div>
 		</div>
 		<div id="squares">
 			<div id="square-18"></div>
@@ -227,6 +294,35 @@
 			['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
 			['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
 		];
+
+		function clearPieces() {
+			document.querySelectorAll('.piece').forEach(p => p.remove());
+		}
+		function clearSquares() {
+			document.querySelectorAll('#squares div').forEach(s => s.classList = '');
+			document.querySelectorAll('.piece').forEach(s => s.classList = 'piece');
+		}
+
+		function loadBoard(board) {
+			clearPieces();
+			clearSquares();
+			board.forEach((row, r) => {
+				row.forEach((cell, f) => {
+					if (cell === '') return;
+
+					const piece = document.createElement('div');
+					piece.classList.add('piece');
+					piece.style.setProperty('--f', f + 1);
+					piece.style.setProperty('--r', 8 - r);
+
+					const img = document.createElement('img');
+					img.src = `/chess/img/150/${cell === cell.toLowerCase() ? 'b' : 'w'}${cell.toLowerCase()}.png`;
+					piece.appendChild(img);
+
+					boardEl.appendChild(piece);
+				});
+			});
+		}
 
 		function getColor(piece) {
 			if (!piece) return null;
@@ -353,8 +449,6 @@
 			return capture ? capture : null;
 		}
 
-		setInterval(() => console.log(state.enpassant), 100);
-
 		function getLegalMoves(pos) {
 			const piece = getBoard(pos.f, pos.r);
 			if (piece === '') return [];
@@ -470,33 +564,8 @@
 			}
 		}
 
-		function clearPieces() {
-			document.querySelectorAll('.piece').forEach(p => p.remove());
-		}
-		function clearSquares() {
-			document.querySelectorAll('#squares div').forEach(s => s.classList = '');
-			document.querySelectorAll('.piece').forEach(s => s.classList = 'piece');
-		}
-
-		function loadBoard(board) {
-			clearPieces();
-			clearSquares();
-			board.forEach((row, r) => {
-				row.forEach((cell, f) => {
-					if (cell === '') return;
-
-					const piece = document.createElement('div');
-					piece.classList.add('piece');
-					piece.style.setProperty('--f', f + 1);
-					piece.style.setProperty('--r', 8 - r);
-
-					const img = document.createElement('img');
-					img.src = `/chess/img/150/${cell === cell.toLowerCase() ? 'b' : 'w'}${cell.toLowerCase()}.png`;
-					piece.appendChild(img);
-
-					boardEl.appendChild(piece);
-				});
-			});
+		function promote(color, to) {
+			
 		}
 
 		document.querySelectorAll('#squares div').forEach(s => s.onclick = handleClick);
