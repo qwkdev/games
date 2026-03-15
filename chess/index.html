@@ -453,6 +453,7 @@
 			) {
 				capture = getBoard(to.f, to.r + (color === 'w' ? -1 : 1));
 				getPiece(to.f, to.r + (color === 'w' ? -1 : 1)).remove();
+				board[8 - (to.r + (color === 'w' ? -1 : 1))][to.f - 1] = '';
 			}
 
 			if (defaultMove) simpleMove(from, to);
