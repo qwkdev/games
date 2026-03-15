@@ -8,7 +8,7 @@
 	<style>
 		:root {
 			--u: 200px;
-			--size: 100vh;
+			--size: 100vw;
 			--piece: calc(var(--size)/8);
 
 			--bg: #121213;
@@ -26,14 +26,14 @@
 			--px: 1px;
 		}
 
-		*[hidden] {
+		*:not(.piece)[hidden], .piece[hidden] img {
 			display: none !important;
 		}
 		*::-webkit-scrollbar {
 			display: none;
 		}
 
-		.piece {
+		.piece, use {
 			pointer-events: none;
 			-webkit-user-drag: none;
 			-moz-user-drag: none;
@@ -163,9 +163,22 @@
 				stroke: var(--icon);
 			}
 		}
+
+		#debug, #debug2 {
+			position: absolute;
+			top: 0;
+			left: 0;
+			font-family: monospace;
+			color: #fff;
+			font-size: 20px;
+		}
+		#debug2 { left: 20%; font-size: 12px; }
 	</style>
 </head>
 <body>
+	<p id="debug"></p>
+	<p id="debug2"></p>
+
 	<svg style="display: none">
 		<symbol id="icon-check" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 			<path d="M4 12.6111L8.92308 17.5L20 6.5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
@@ -177,19 +190,19 @@
 
 	<div id="board">
 		<div id="promote">
-			<div class="promotion" id="white-promotion" style="--f: 1;">
-				<img onclick="promote('w', 'q')" src="/chess/img/150/wq.png">
-				<img onclick="promote('w', 'n')" src="/chess/img/150/wn.png">
-				<img onclick="promote('w', 'r')" src="/chess/img/150/wr.png">
-				<img onclick="promote('w', 'b')" src="/chess/img/150/wb.png">
-				<svg onclick="cancelPromote()" ><use href="#icon-x"/></svg>
+			<div class="promotion" id="white-promotion" style="--f: 1;" hidden>
+				<img class="promote-option" data-value="wq" src="/chess/img/150/wq.png">
+				<img class="promote-option" data-value="wn" src="/chess/img/150/wn.png">
+				<img class="promote-option" data-value="wr" src="/chess/img/150/wr.png">
+				<img class="promote-option" data-value="wb" src="/chess/img/150/wb.png">
+				<svg><use href="#icon-x"/></svg>
 			</div>
-			<div class="promotion" id="black-promotion" style="--f: 1;">
-				<svg onclick="cancelPromote()" ><use href="#icon-x"/></svg>
-				<img onclick="promote('b', 'b')" src="/chess/img/150/bb.png">
-				<img onclick="promote('b', 'r')" src="/chess/img/150/br.png">
-				<img onclick="promote('b', 'n')" src="/chess/img/150/bn.png">
-				<img onclick="promote('b', 'q')" src="/chess/img/150/bq.png">
+			<div class="promotion" id="black-promotion" style="--f: 1;" hidden>
+				<svg><use href="#icon-x"/></svg>
+				<img class="promote-option" data-value="bb" src="/chess/img/150/bb.png">
+				<img class="promote-option" data-value="br" src="/chess/img/150/br.png">
+				<img class="promote-option" data-value="bn" src="/chess/img/150/bn.png">
+				<img class="promote-option" data-value="bq" src="/chess/img/150/bq.png">
 			</div>
 		</div>
 		<div id="squares">
@@ -333,11 +346,15 @@
 			if (f < 1 || f > 8 || r < 1 || r > 8) return null;
 			return board[8 - r][f - 1];
 		}
+		function getRank(r) {
+			if (r < 1 || r > 8) return null;
+			return board[8 - r];
+		}
 
 		function getPos(ele) {
 			if (ele.id.startsWith('square-')) {
 				const [f, r] = ele.id.slice(7).split('').map(Number);
-				return { f, r};
+				return { f, r };
 			}
 
 			const f = parseInt(getComputedStyle(ele).getPropertyValue('--f'));
@@ -384,7 +401,7 @@
 			pieceEl.style.setProperty('--r', to.r);
 		}
 
-		function makeMove(from, to) {
+		async function makeMove(from, to) {
 			const piece = getBoard(from.f, from.r);
 			let capture = getBoard(to.f, to.r);
 
@@ -392,6 +409,7 @@
 			const color = getColor(piece);
 
 			let defaultMove = true;
+			let defaultCapture = true;
 
 			const castlingRank = color === 'w' ? 1 : 8;
 			if (
@@ -413,7 +431,16 @@
 				defaultMove = false;
 			}
 
-			if (capture) {
+			if (pType === 'p' && to.r === (color === 'w' ? 8 : 1)) {
+				const resp = await promote(color, from, to);
+				if (!resp[0]) return [false, null];
+
+				defaultMove = false;
+				defaultCapture = false;
+				capture = resp[1];
+			}
+
+			if (defaultCapture && capture) {
 				getPiece(to.f, to.r).remove();
 			}
 
@@ -446,7 +473,7 @@
 				state.enpassant = { color: color === 'w' ? 'b' : 'w', f: to.f, r: to.r + (color === 'w' ? -1 : 1) };
 			} else state.enpassant = null;
 
-			return capture ? capture : null;
+			return [true, capture ? capture : null];
 		}
 
 		function getLegalMoves(pos) {
@@ -537,7 +564,7 @@
 			ele.classList.add('selected');
 		}
 
-		function handleClick(e) {
+		async function handleClick(e) {
 			const square = e.currentTarget;
 			const pos = getPos(square);
 			const boardPiece = getBoard(pos.f, pos.r);
@@ -559,13 +586,68 @@
 					state.selected = null;
 				}
 			} else if (state.selected) {
-				if (legalMove(state.selected, pos)) makeMove(state.selected, pos);
+				if (legalMove(state.selected, pos)) {
+					const resp = await makeMove(state.selected, pos);
+				}
 				state.selected = null;
 			}
 		}
 
-		function promote(color, to) {
+		// const promotion = Object.fromEntries([
+		// 	'wq', 'wn', 'wr', 'wb', 'wc',
+		// 	'bq', 'bn', 'br', 'bb', 'bc'
+		// ].map(p => [p, document.getElementById(`promote-${p}`)]))
+
+		const promotion = {
+			w: document.getElementById('white-promotion'),
+			b: document.getElementById('black-promotion')
+		}
+
+		async function promote(color, from, to) {
+			const pawn = getPiece(from.f, from.r);
+			pawn.hidden = true;
+
+			promotion.w.hidden = true;
+			promotion.b.hidden = true;
 			
+			const pDialog = promotion[color === 'w' ? 'w' : 'b'];
+			pDialog.style.setProperty('--f', to.f);
+			pDialog.hidden = false;
+			
+			const pRankNum = color === 'w' ? 8 : 1;
+			const pTo = await new Promise(res => {
+				setTimeout(() => {
+					document.addEventListener('click', e => {
+						if (e.target.classList.contains('promote-option')) {
+							res(e.target.dataset.value);
+						} else res(null);
+					}, { once: true });
+				}, 0);
+			});
+
+			if (!pTo) {
+				pawn.hidden = false;
+				promotion.w.hidden = true;
+				promotion.b.hidden = true;
+				return [false, null];
+			}
+
+			const piece = pTo[0] === 'w' ? pTo[1].toUpperCase() : pTo[1];
+			let capture = getBoard(to.f, to.r);
+			if (capture) getPiece(to.f, to.r).remove();
+
+			board[8 - to.r][to.f - 1] = piece;
+			board[8 - from.r][from.f - 1] = '';
+			
+			pawn.style.setProperty('--f', to.f);
+			pawn.style.setProperty('--r', to.r);
+			pawn.querySelector('img').src = `/chess/img/150/${pTo}.png`;
+			
+			pawn.hidden = false;
+			promotion.w.hidden = true;
+			promotion.b.hidden = true;
+
+			return [true, capture];
 		}
 
 		document.querySelectorAll('#squares div').forEach(s => s.onclick = handleClick);
@@ -583,6 +665,13 @@
 		});
 
 		loadBoard(board);
+
+		const debug = document.getElementById('debug');
+		const debug2 = document.getElementById('debug2');
+		setInterval(() => {
+			debug.innerHTML = board.map(row=>row.map(p=>p?p:'.').join('')).join('<br>');
+			debug2.innerHTML = `<pre>${JSON.stringify(state, null, 2)}</pre>`;
+		});
 
 		// setTimeout(() => {
 		// 	const piece = document.querySelector('.piece');
