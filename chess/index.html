@@ -8,14 +8,19 @@
 	<style>
 		:root {
 			--u: 200px;
-			--size: 800px;
-			--piece: 100px;
+			--size: 100vh;
+			--piece: calc(var(--size)/8);
 
 			--light: #edd6b0;
 			--dark: #b88762;
 
 			--light: #edb;
 			--dark: #b86;
+
+			--selected: rgba(255, 255, 0, 0.5);
+			--hint: rgba(0, 0, 0, 0.14);
+
+			--px: 1px;
 		}
 
 		.piece {
@@ -31,6 +36,10 @@
 			user-select: none;
 		}
 
+		body {
+			background: #121213;
+		}
+
 		#board {
 			position: absolute;
 			top: 50%;
@@ -39,11 +48,15 @@
 
 			width: var(--size);
 			height: var(--size);
-			border: 1px solid black;
+			box-sizing: border-box;
 			
 			background:
 				conic-gradient(var(--dark) 25%, var(--light) 0 50%, var(--dark) 0 75%, var(--light) 0);
 			background-size: calc(var(--size) / 4) calc(var(--size) / 4);
+		}
+
+		.selected {
+			background: var(--selected);
 		}
 
 		#squares {
@@ -56,11 +69,30 @@
 			grid-template-rows: repeat(8, 1fr);
 
 			div {
+				position: relative;
 				width: var(--piece);
 				height: var(--piece);
 
-				&.debug {
-					outline: 2px solid blue;
+				&.move::after, &.capture::after {
+					content: '';
+					position: absolute;
+					top: 50%;
+					left: 50%;
+					transform: translate(-50%, -50%);
+
+					box-sizing: border-box;
+					border-radius: 50%;
+					z-index: 999;
+				}
+				&.move::after {
+					width: 32.5%;
+					height: 32.5%;
+					background: var(--hint);
+				}
+				&.capture::after {
+					width: 100%;
+					height: 100%;
+					border: calc(var(--piece) / 12) solid var(--hint);
 				}
 			}
 		}
@@ -78,10 +110,6 @@
 				calc(-1 * (var(--r) - 1) * var(--piece))
 			);
 
-			&.selected {
-				outline: 2px solid black;
-			}
-
 			img {
 				width: 100%;
 				height: 100%;
@@ -93,6 +121,10 @@
 <body>
 	
 	<div id="board">
+		<div id="promote">
+			<div class="promotion" id="white-promotion"></div>
+			<div class="promotion" id="black-promotion"></div>
+		</div>
 		<div id="squares">
 			<div id="square-18"></div>
 			<div id="square-28"></div>
@@ -182,7 +214,8 @@
 					k: true,
 					q: true
 				}
-			}
+			},
+			enpassant: null
 		}
 		const board = [
 			['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
@@ -257,13 +290,16 @@
 
 		function makeMove(from, to) {
 			const piece = getBoard(from.f, from.r);
-			const capture = getBoard(to.f, to.r);
+			let capture = getBoard(to.f, to.r);
+
+			const pType = piece.toLowerCase();
+			const color = getColor(piece);
 
 			let defaultMove = true;
 
-			const castlingRank = piece === 'K' ? 1 : 8;
+			const castlingRank = color === 'w' ? 1 : 8;
 			if (
-				piece.toLowerCase() === 'k' &&
+				pType === 'k' &&
 				from.f === 5 &&
 				from.r === castlingRank &&
 				to.r === castlingRank &&
@@ -284,12 +320,40 @@
 			if (capture) {
 				getPiece(to.f, to.r).remove();
 			}
-			if (defaultMove) {
-				simpleMove(from, to)
+
+			if (
+				state.enpassant &&
+				pType === 'p' &&
+				color === state.enpassant.color &&
+				to.f === state.enpassant.f &&
+				to.r === state.enpassant.r
+			) {
+				capture = getBoard(to.f, to.r + (color === 'w' ? -1 : 1));
+				getPiece(to.f, to.r + (color === 'w' ? -1 : 1)).remove();
 			}
+
+			if (defaultMove) simpleMove(from, to);
+
+			if (pType === 'k') {
+				state.castling[color] = { k: false, q: false };
+			} else if (pType === 'r' && from.r === castlingRank) {
+				if (from.f === 1) state.castling[color].q = false;
+				else if (from.f === 8) state.castling[color].k = false;
+			}
+
+			if (capture.toLowerCase() === 'r' && to.r === (color === 'b' ? 1 : 8)) {
+				if (to.f === 1) state.castling[color === 'w' ? 'b' : 'w'].q = false;
+				else if (to.f === 8) state.castling[color === 'w' ? 'b' : 'w'].k = false;
+			}
+
+			if (pType === 'p' && from.r === (color === 'w' ? 2 : 7) && to.r === (color === 'w' ? 4 : 5)) {
+				state.enpassant = { color: color === 'w' ? 'b' : 'w', f: to.f, r: to.r + (color === 'w' ? -1 : 1) };
+			} else state.enpassant = null;
 
 			return capture ? capture : null;
 		}
+
+		setInterval(() => console.log(state.enpassant), 100);
 
 		function getLegalMoves(pos) {
 			const piece = getBoard(pos.f, pos.r);
@@ -332,6 +396,31 @@
 				}
 			}
 
+			const castlingRank = color === 'w' ? 1 : 8;
+			if (pType === 'k' && pos.f === 5 && pos.r === castlingRank) {
+				if (
+					state.castling[color].k &&
+					getBoard(6, castlingRank) === '' &&
+					getBoard(7, castlingRank) === ''
+				) moves.push([7, castlingRank]);
+				if (
+					state.castling[color].q &&
+					getBoard(2, castlingRank) === '' &&
+					getBoard(3, castlingRank) === '' &&
+					getBoard(4, castlingRank) === ''
+				) moves.push([3, castlingRank]);
+			}
+
+			if (
+				state.enpassant &&
+				pType === 'p' &&
+				color === state.enpassant.color &&
+				pos.r === state.enpassant.r + (color === 'w' ? -1 : 1) &&
+				(pos.f === state.enpassant.f + 1 || pos.f === state.enpassant.f -1)
+			) {
+				moves.push([state.enpassant.f, state.enpassant.r]);
+			}
+
 			moves = moves.filter(m => m[0] >= 1 && m[0] <= 8 && m[1] >= 1 && m[1] <= 8);
 
 			return moves;
@@ -368,7 +457,10 @@
 					selectPiece(piece);
 
 					const t = getLegalMoves(pos);
-					t.forEach(p => getSquare(...p).classList.add('debug'));
+					t.forEach(p => {
+						const piece = getBoard(...p);
+						getSquare(...p).classList.add(piece ? 'capture' : 'move')
+					});
 				} else {
 					state.selected = null;
 				}
