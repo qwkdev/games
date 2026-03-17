@@ -8,6 +8,7 @@
 	<style>
 		:root {
 			--u: 200px;
+
 			--size: 100vw;
 			--piece: calc(var(--size)/8);
 
@@ -173,6 +174,16 @@
 			font-size: 20px;
 		}
 		#debug2 { left: 20%; font-size: 12px; }
+
+		@media screen and (min-aspect-ratio: 1/1) {
+			:root {
+				--size: 100vh;
+			}
+			#debug2 {
+				left: initial;
+				right: 1%;
+			}
+		}
 	</style>
 </head>
 <body>
@@ -191,18 +202,18 @@
 	<div id="board">
 		<div id="promote">
 			<div class="promotion" id="white-promotion" style="--f: 1;" hidden>
-				<img class="promote-option" data-value="wq" src="/chess/img/150/wq.png">
-				<img class="promote-option" data-value="wn" src="/chess/img/150/wn.png">
-				<img class="promote-option" data-value="wr" src="/chess/img/150/wr.png">
-				<img class="promote-option" data-value="wb" src="/chess/img/150/wb.png">
+				<img class="promote-option" data-value="wq" src="/img/150/wq.png">
+				<img class="promote-option" data-value="wn" src="/img/150/wn.png">
+				<img class="promote-option" data-value="wr" src="/img/150/wr.png">
+				<img class="promote-option" data-value="wb" src="/img/150/wb.png">
 				<svg><use href="#icon-x"/></svg>
 			</div>
 			<div class="promotion" id="black-promotion" style="--f: 1;" hidden>
 				<svg><use href="#icon-x"/></svg>
-				<img class="promote-option" data-value="bb" src="/chess/img/150/bb.png">
-				<img class="promote-option" data-value="br" src="/chess/img/150/br.png">
-				<img class="promote-option" data-value="bn" src="/chess/img/150/bn.png">
-				<img class="promote-option" data-value="bq" src="/chess/img/150/bq.png">
+				<img class="promote-option" data-value="bb" src="/img/150/bb.png">
+				<img class="promote-option" data-value="br" src="/img/150/br.png">
+				<img class="promote-option" data-value="bn" src="/img/150/bn.png">
+				<img class="promote-option" data-value="bq" src="/img/150/bq.png">
 			</div>
 		</div>
 		<div id="squares">
@@ -272,7 +283,7 @@
 			<div id="square-81"></div>
 		</div>
 		<!-- <div class="piece" style="--f: 5; --r: 2;">
-			<img src="/chess/img/150/wp.png">
+			<img src="/img/150/wp.png">
 		</div> -->
 	</div>
 
@@ -329,7 +340,7 @@
 					piece.style.setProperty('--r', 8 - r);
 
 					const img = document.createElement('img');
-					img.src = `/chess/img/150/${cell === cell.toLowerCase() ? 'b' : 'w'}${cell.toLowerCase()}.png`;
+					img.src = `/img/150/${cell === cell.toLowerCase() ? 'b' : 'w'}${cell.toLowerCase()}.png`;
 					piece.appendChild(img);
 
 					boardEl.appendChild(piece);
@@ -645,7 +656,7 @@
 			
 			pawn.style.setProperty('--f', to.f);
 			pawn.style.setProperty('--r', to.r);
-			pawn.querySelector('img').src = `/chess/img/150/${pTo}.png`;
+			pawn.querySelector('img').src = `/img/150/${pTo}.png`;
 			
 			pawn.hidden = false;
 			promotion.w.hidden = true;
