@@ -330,8 +330,8 @@
 		function loadBoard(board) {
 			clearPieces();
 			clearSquares();
-			board.forEach((row, r) => {
-				row.forEach((cell, f) => {
+			board.forEach((rank, r) => {
+				rank.forEach((cell, f) => {
 					if (cell === '') return;
 
 					const piece = document.createElement('div');
@@ -362,6 +362,28 @@
 			return board[8 - r];
 		}
 
+		function getAllIndexes(arr, val) {
+			var indexes = [], i;
+			for(i = 0; i < arr.length; i++)
+				if (arr[i] === val)
+					indexes.push(i);
+			return indexes;
+		}
+
+		function searchBoard(board, piece, one=false) {
+			let indexes = [];
+			for (let r = 0; r < 8; r++) {
+				const rank = board[r];
+				for (let f = 0; f < 8; f++) {
+					if (rank[f] === piece) {
+						if (one) return [f+1, 8-r];
+						indexes.push([f+1, 8-r]);
+					}
+				}
+			}
+			return null;
+		}
+
 		function getPos(ele) {
 			if (ele.id.startsWith('square-')) {
 				const [f, r] = ele.id.slice(7).split('').map(Number);
@@ -379,29 +401,44 @@
 		function getPiece(f, r) {
 			return document.querySelector(`.piece[style*="--f: ${f}"][style*="--r: ${r}"]`);
 		}
+		
 
 
 		const pieceValues = {
-			'p': 1,
-			'n': 3,
-			'b': 3,
-			'r': 5,
-			'q': 9,
-			'k': 1000
+			p: 1,
+			n: 3,
+			b: 3,
+			r: 5,
+			q: 9,
+			k: 1000
 		}
 		const moveDeltas = {
-			'n': [
+			n: [
 				[2, 1], [2, -1],
 				[-2, 1], [-2, -1],
 				[1, 2], [1, -2],
 				[-1, 2], [-1, -2]
 			],
-			'b': [[1, 1], [1, -1], [-1, 1], [-1, -1]],
-			'r': [[0, 1], [0, -1], [1, 0], [-1, 0]],
-			'q': [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]],
-			'k': [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]]
+			b: [[1, 1], [1, -1], [-1, 1], [-1, -1]],
+			r: [[0, 1], [0, -1], [1, 0], [-1, 0]],
+			q: [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]],
+			k: [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]]
 		}
 		
+		function checkCheck(board, color) {
+			const kingPos = searchBoard(board, color === 'w' ? 'K' : 'k', true);
+			for (const [df, dr] of moveDeltas.b) { //! TODO
+				for (let i = 1; i < 8; i++) {
+					const potential = getBoard(kingPos[0] + df * i, kingPos[1] + dr * i);
+					if (potential === null || potential !== '') {
+						if (color !== getColor(potential)) moves.push([kingPos[0] + df * i, kingPos[1] + dr * i]);
+						break;
+					}
+					moves.push([kingPos[0] + df * i, kingPos[1] + dr * i]);
+				}
+			}
+		}
+
 		function simpleMove(from, to) {
 			const piece = getBoard(from.f, from.r);
 			board[8 - to.r][to.f - 1] = piece;
@@ -432,7 +469,7 @@
 				to.r === castlingRank &&
 				(to.f === 3 || to.f === 7)
 			) {
-				simpleMove(from, to);
+				if (!sim) simpleMove(from, to);
 				moves.push([from, to]);
 
 				const rookMoves = {
@@ -441,11 +478,12 @@
 				};
 
 				const [rookFrom, rookTo] = rookMoves[to.f];
-				simpleMove(rookFrom, rookTo);
+				if (!sim) simpleMove(rookFrom, rookTo);
+				moves.push([rookFrom, rookTo]);
 				defaultMove = false;
 			}
 
-			if (pType === 'p' && to.r === (color === 'w' ? 8 : 1)) {
+			if (!sim && pType === 'p' && to.r === (color === 'w' ? 8 : 1)) {
 				const resp = await promote(color, from, to);
 				if (!resp[0]) return [false, null];
 
@@ -454,11 +492,12 @@
 				capture = resp[1];
 			}
 
-			if (defaultCapture && capture) {
+			if (!sim && defaultCapture && capture) {
 				getPiece(to.f, to.r).remove();
 			}
 
 			if (
+				!sim &&
 				state.enpassant &&
 				pType === 'p' &&
 				color === state.enpassant.color &&
@@ -470,7 +509,19 @@
 				board[8 - (to.r + (color === 'w' ? -1 : 1))][to.f - 1] = '';
 			}
 
-			if (defaultMove) simpleMove(from, to);
+			if (defaultMove) {
+				if (!sim) simpleMove(from, to);
+				moves.push([from, to]);
+			}
+
+			if (sim) {
+				let simBoard = board.map(r => [...r]);
+				moves.forEach(m => {
+					simBoard[8 - m[1].r][m[1].f - 1] = simBoard[8 - m[0].r][m[0].f - 1];
+					simBoard[8 - m[0].r][m[0].f - 1] = '';
+				});
+				return simBoard;
+			}
 
 			if (pType === 'k') {
 				state.castling[color] = { k: false, q: false };
@@ -684,7 +735,7 @@
 		const debug = document.getElementById('debug');
 		const debug2 = document.getElementById('debug2');
 		setInterval(() => {
-			debug.innerHTML = board.map(row=>row.map(p=>p?p:'.').join('')).join('<br>');
+			debug.innerHTML = board.map(r=>r.map(p=>p?p:'.').join('')).join('<br>');
 			debug2.innerHTML = `<pre>${JSON.stringify(state, null, 2)}</pre>`;
 		});
 
