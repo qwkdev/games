@@ -7,13 +7,25 @@
 
 	<style>
 		:root {
-			--u: 200px;
+			--u: 1.2vw;
 
-			--size: 100vw;
-			--piece: calc(var(--size)/8);
+			--px: 1px;
+			--piece: round(calc(100vw / 8), var(--px));
 
 			--bg: #121213;
 			--icon: #777;
+
+			--text: #fff;
+			--text-dim: #555;
+			--text-s: #ffffff77;
+			--text-dim-s: #55555577;
+
+			--modal-shadow: #06060888;
+			--modal-bg: #161618;
+
+			--bg2: #2a2a2b;
+			--bg3: #444445;
+			--bg4: #777779;
 
 			--light: #edd6b0;
 			--dark: #b88762;
@@ -23,8 +35,6 @@
 
 			--selected: rgba(255, 255, 0, 0.5);
 			--hint: rgba(0, 0, 0, 0.14);
-
-			--px: 1px;
 		}
 
 		*:not(.piece)[hidden], .piece[hidden] img {
@@ -52,19 +62,44 @@
 			overflow: hidden;
 		}
 
+		.btn {
+			--btn-h: var(--h);
+			--btn-s: var(--s);
+			--btn-l: var(--l);
+			--br: calc(1 * var(--u));
+			--border: calc(.15 * var(--u));
+
+			box-sizing: border-box;
+			font-family: Arial;
+			font-size: calc(2 * var(--u));
+			color: #fff;
+
+			background: hsl(var(--btn-h), calc(83% * var(--btn-s)), calc(57% * var(--btn-l)));
+			border: var(--border) solid hsl(var(--btn-h), calc(70% * var(--btn-s)), calc(48% * var(--btn-l)));
+			border-radius: var(--br);
+			box-shadow:
+				0 calc(var(--border)/2) calc(var(--border)/2) var(--border) hsla(var(--btn-h), calc(72% * var(--btn-s)), calc(30% * var(--btn-l)), 0.2),
+				inset 0 calc(-1 * var(--border)) var(--border) 0 hsl(var(--btn-h), calc(70% * var(--btn-s)), calc(48% * var(--btn-l))),
+				inset 0 0 0 var(--border) hsl(var(--btn-h), calc(92% * var(--btn-s)), calc(62% * var(--btn-l)));
+
+			transition: .2s;
+		}
+		.btn:hover {
+			--btn-l: calc(var(--l) * 1.05);
+		}
+		.btn:focus {
+			outline: none;
+		}
+
 		#board {
 			position: absolute;
 			top: 50%;
 			left: 50%;
 			transform: translate(-50%, -50%);
 
-			width: var(--size);
-			height: var(--size);
+			width: calc(var(--piece) * 8);
+			height: calc(var(--piece) * 8);
 			box-sizing: border-box;
-			
-			background:
-				conic-gradient(var(--dark) 25%, var(--light) 0 50%, var(--dark) 0 75%, var(--light) 0);
-			background-size: calc(var(--size) / 4) calc(var(--size) / 4);
 
 			overflow: hidden;
 		}
@@ -86,6 +121,19 @@
 				position: relative;
 				width: var(--piece);
 				height: var(--piece);
+
+				background: var(--light);
+
+				&:nth-child(16n + 1),
+				&:nth-child(16n + 3),
+				&:nth-child(16n + 5),
+				&:nth-child(16n + 7),
+				&:nth-child(16n + 10),
+				&:nth-child(16n + 12),
+				&:nth-child(16n + 14),
+				&:nth-child(16n + 16) {
+					background: var(--dark);
+				}
 
 				&.move::after, &.capture::after {
 					content: '';
@@ -165,6 +213,91 @@
 			}
 		}
 
+		#result-wrapper {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100vw;
+			height: 100vh;
+
+			background: var(--modal-shadow);
+
+			#result {
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+
+				background: var(--modal-bg);
+				width: 50vw;
+
+				border-radius: calc(2 * var(--u));
+
+				#condition {
+					border-radius: calc(2 * var(--u));
+
+					background: radial-gradient(
+						circle at center 150%,
+						var(--bg4), var(--bg2)
+					);
+
+					
+					padding: calc(5 * var(--u)) 0;
+
+					h1, h2 {
+						margin: 0;
+						text-align: center;
+
+						color: var(--text);
+						font-family: Arial;
+
+						&::selection {
+							background: var(--text-s);
+						}
+					}
+					h1 {
+						font-size: calc(3.5 * var(--u));
+						font-weight: 700;
+					}
+					h2 {
+						font-size: calc(2 * var(--u));
+						font-weight: 500;
+					}
+				}
+				#options {
+					display: grid;
+					grid-template-columns: 1fr 1fr;
+					gap: calc(.5 * var(--u));
+
+					padding: calc(1 * var(--u));
+					height: calc(5 * var(--u));
+
+					.btn {
+						--h: 0;
+						--s: 0;
+						--l: .57;
+					}
+				}
+				#watermark {
+					width: 100%;
+					text-align: center;
+					margin: 0;
+
+					padding-bottom: calc(1.1 * var(--u));
+					font-size: calc(1.5 * var(--u));
+					font-family: Arial;
+
+					color: var(--text-dim);
+
+					&::selection {
+						background: var(--text-dim-s);
+					}
+				}
+			}
+		}
+
+
+
 		#debug, #debug2 {
 			position: absolute;
 			top: 0;
@@ -175,9 +308,10 @@
 		}
 		#debug2 { left: 20%; font-size: 12px; }
 
-		@media screen and (min-aspect-ratio: 1/1) {
+		@media only screen and (min-aspect-ratio: 1/1) {
 			:root {
-				--size: 100vh;
+				--u: 1vh;
+				--piece: round(calc(100vh / 8), var(--px));
 			}
 			#debug2 {
 				left: initial;
@@ -287,6 +421,20 @@
 		</div> -->
 	</div>
 
+	<div id="result-wrapper">
+		<div id="result">
+			<div id="condition">
+				<h1>White Wins</h1>
+				<h2>By Checkmate</h2>
+			</div>
+			<div id="options">
+				<button class="btn">Coming Soon</button>
+				<button class="btn">New Game</button>
+			</div>
+			<p id="watermark">qchess.pro</p>
+		</div>
+	</div>
+
 	<script>
 		// file => x
 		// rank => y
@@ -308,7 +456,7 @@
 			},
 			enpassant: null
 		}
-		const board = [
+		const gameBoard = [
 			['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
 			['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
 			['',  '',  '',  '',  '',  '',  '',  ''],
@@ -353,11 +501,11 @@
 			return piece !== piece.toLowerCase() ? 'w' : 'b';
 		}
 
-		function getBoard(f, r) {
+		function getBoard(f, r, board=gameBoard) {
 			if (f < 1 || f > 8 || r < 1 || r > 8) return null;
 			return board[8 - r][f - 1];
 		}
-		function getRank(r) {
+		function getRank(r, board=gameBoard) {
 			if (r < 1 || r > 8) return null;
 			return board[8 - r];
 		}
@@ -401,6 +549,24 @@
 		function getPiece(f, r) {
 			return document.querySelector(`.piece[style*="--f: ${f}"][style*="--r: ${r}"]`);
 		}
+
+		const winConditions = [
+			['w', 'Checkmate'],
+			['b', 'Checkmate'],
+			['w', 'Resignation'],
+			['b', 'Resignation'],
+			['w', 'Timeout'],
+			['b', 'Timeout'],
+			[null, 'Stalemate'],
+			[null, 'Insufficient Material'],
+			[null, '50 Move Rule'],
+			[null, 'Repetition'],
+			[null, 'Agreement']
+		]
+
+		function endGame(code) {
+
+		}
 		
 
 
@@ -426,23 +592,61 @@
 		}
 		
 		function checkCheck(board, color) {
+			const st = performance.now();
 			const kingPos = searchBoard(board, color === 'w' ? 'K' : 'k', true);
-			for (const [df, dr] of moveDeltas.b) { //! TODO
-				for (let i = 1; i < 8; i++) {
-					const potential = getBoard(kingPos[0] + df * i, kingPos[1] + dr * i);
-					if (potential === null || potential !== '') {
-						if (color !== getColor(potential)) moves.push([kingPos[0] + df * i, kingPos[1] + dr * i]);
-						break;
+			for (const pType of ['b', 'r']) {
+				for (const [df, dr] of moveDeltas[pType]) {
+					for (let i = 1; i < 8; i++) {
+						const potential = getBoard(kingPos[0] + df * i, kingPos[1] + dr * i, board);
+						if (potential === null) break;
+						if (potential !== '') {
+							if (
+								color !== getColor(potential) &&
+								(potential.toLowerCase() === pType ||
+								potential.toLowerCase() === 'q')
+							) return true;
+							break;
+						}
 					}
-					moves.push([kingPos[0] + df * i, kingPos[1] + dr * i]);
 				}
 			}
+			for (const pType of ['n', 'k']) {
+				for (const [df, dr] of moveDeltas[pType]) {
+					const potential = getBoard(kingPos[0] + df, kingPos[1] + dr, board);
+					if (potential === null) break;
+					if (potential !== '') {
+						if (
+							color !== getColor(potential) &&
+							potential.toLowerCase() === pType
+						) return true;
+						break;
+					}
+				}
+			}
+
+			return false;
+		}
+
+		function checkLegal(color, board=gameBoard) {
+			for (let r = 0; r < 8; r++) {
+				const rank = board[r];
+				for (let f = 0; f < 8; f++) {
+					const piece = board[r][f];
+
+					if (getColor(piece) !== color) continue;
+
+					const legal = getLegalMoves({ f: f+1, r: 8-r }, true);
+					if (legal) return true;
+				}
+			}
+
+			return false;
 		}
 
 		function simpleMove(from, to) {
 			const piece = getBoard(from.f, from.r);
-			board[8 - to.r][to.f - 1] = piece;
-			board[8 - from.r][from.f - 1] = '';
+			gameBoard[8 - to.r][to.f - 1] = piece;
+			gameBoard[8 - from.r][from.f - 1] = '';
 
 			const pieceEl = getPiece(from.f, from.r);
 			pieceEl.style.setProperty('--f', to.f);
@@ -506,7 +710,7 @@
 			) {
 				capture = getBoard(to.f, to.r + (color === 'w' ? -1 : 1));
 				getPiece(to.f, to.r + (color === 'w' ? -1 : 1)).remove();
-				board[8 - (to.r + (color === 'w' ? -1 : 1))][to.f - 1] = '';
+				gameBoard[8 - (to.r + (color === 'w' ? -1 : 1))][to.f - 1] = '';
 			}
 
 			if (defaultMove) {
@@ -515,7 +719,7 @@
 			}
 
 			if (sim) {
-				let simBoard = board.map(r => [...r]);
+				let simBoard = gameBoard.map(r => [...r]);
 				moves.forEach(m => {
 					simBoard[8 - m[1].r][m[1].f - 1] = simBoard[8 - m[0].r][m[0].f - 1];
 					simBoard[8 - m[0].r][m[0].f - 1] = '';
@@ -530,19 +734,45 @@
 				else if (from.f === 8) state.castling[color].k = false;
 			}
 
+			const opponentColor = color === 'w' ? 'b' : 'w';
 			if (capture.toLowerCase() === 'r' && to.r === (color === 'b' ? 1 : 8)) {
-				if (to.f === 1) state.castling[color === 'w' ? 'b' : 'w'].q = false;
-				else if (to.f === 8) state.castling[color === 'w' ? 'b' : 'w'].k = false;
+				if (to.f === 1) state.castling[opponentColor].q = false;
+				else if (to.f === 8) state.castling[opponentColor].k = false;
 			}
 
 			if (pType === 'p' && from.r === (color === 'w' ? 2 : 7) && to.r === (color === 'w' ? 4 : 5)) {
-				state.enpassant = { color: color === 'w' ? 'b' : 'w', f: to.f, r: to.r + (color === 'w' ? -1 : 1) };
+				state.enpassant = { color: opponentColor, f: to.f, r: to.r + (color === 'w' ? -1 : 1) };
 			} else state.enpassant = null;
+
+			state.check = checkCheck(gameBoard, opponentColor);
+
+			const legal = checkLegal(opponentColor);
+			if (!legal) {
+				if (state.check) endGame(color === 'w' ? 0 : 1);
+				else endGame(5);
+			}
 
 			return [true, capture ? capture : null];
 		}
 
-		function getLegalMoves(pos) {
+		async function canCastleThrough(color, f, r, check=true) {
+			if (getBoard(f, r) !== '') return false;
+			if (!check) return true;
+
+			const king = color === 'w' ? 'K' : 'k';
+			const simBoard = gameBoard.map(r => r.map(p => p === king ? '' : p));
+			simBoard[8 - r][f - 1] = king;
+
+			return !(await checkCheck(simBoard, color));
+		}
+
+		async function validMove(pos, move, color) {
+			const simBoard = await makeMove(pos, move, true);
+			const inCheck = checkCheck(simBoard, color);
+			return !inCheck;
+		}
+
+		async function getLegalMoves(pos, exists=false) {
 			const piece = getBoard(pos.f, pos.r);
 			if (piece === '') return [];
 			const pType = piece.toLowerCase();
@@ -587,14 +817,14 @@
 			if (pType === 'k' && pos.f === 5 && pos.r === castlingRank) {
 				if (
 					state.castling[color].k &&
-					getBoard(6, castlingRank) === '' &&
-					getBoard(7, castlingRank) === ''
+					(await canCastleThrough(color, 6, castlingRank)) &&
+					(await canCastleThrough(color, 7, castlingRank))
 				) moves.push([7, castlingRank]);
 				if (
 					state.castling[color].q &&
-					getBoard(2, castlingRank) === '' &&
-					getBoard(3, castlingRank) === '' &&
-					getBoard(4, castlingRank) === ''
+					(await canCastleThrough(color, 2, castlingRank)) &&
+					(await canCastleThrough(color, 3, castlingRank)) &&
+					(await canCastleThrough(color, 4, castlingRank))
 				) moves.push([3, castlingRank]);
 			}
 
@@ -610,14 +840,26 @@
 
 			moves = moves.filter(m => m[0] >= 1 && m[0] <= 8 && m[1] >= 1 && m[1] <= 8);
 
+			if (exists) {
+				for (const m of moves) {
+					if (!(await validMove(pos, { f: m[0], r: m[1] }, color))) return true;
+				}
+				return false;
+			}
+
+			const valid = await Promise.all(moves.map(
+				async m => validMove(pos, { f: m[0], r: m[1] }, color)
+			));
+			moves = moves.filter((_, i) => valid[i]);
+
 			return moves;
 		}
 
-		function legalMove(from, to) {
+		async function legalMove(from, to) {
 			const piece = getBoard(from.f, from.r);
 			if (piece === '') return false;
 
-			const legalMoves = getLegalMoves(from);
+			const legalMoves = await getLegalMoves(from);
 			if (!legalMoves.some(m => m[0] === to.f && m[1] === to.r)) {
 				return false;
 			}
@@ -638,12 +880,12 @@
 
 			clearSquares();
 
-			if (state.selected === null || !legalMove(state.selected, pos)) {
+			if (state.selected === null || !(await legalMove(state.selected, pos))) {
 				if (piece) {
 					state.selected = pos;
 					selectPiece(piece);
 
-					const t = getLegalMoves(pos);
+					const t = await getLegalMoves(pos);
 					t.forEach(p => {
 						const piece = getBoard(...p);
 						getSquare(...p).classList.add(piece ? 'capture' : 'move')
@@ -652,7 +894,7 @@
 					state.selected = null;
 				}
 			} else if (state.selected) {
-				if (legalMove(state.selected, pos)) {
+				if (await legalMove(state.selected, pos)) {
 					const resp = await makeMove(state.selected, pos);
 				}
 				state.selected = null;
@@ -702,8 +944,8 @@
 			let capture = getBoard(to.f, to.r);
 			if (capture) getPiece(to.f, to.r).remove();
 
-			board[8 - to.r][to.f - 1] = piece;
-			board[8 - from.r][from.f - 1] = '';
+			gameBoard[8 - to.r][to.f - 1] = piece;
+			gameBoard[8 - from.r][from.f - 1] = '';
 			
 			pawn.style.setProperty('--f', to.f);
 			pawn.style.setProperty('--r', to.r);
@@ -730,12 +972,12 @@
 			}
 		});
 
-		loadBoard(board);
+		loadBoard(gameBoard);
 
 		const debug = document.getElementById('debug');
 		const debug2 = document.getElementById('debug2');
 		setInterval(() => {
-			debug.innerHTML = board.map(r=>r.map(p=>p?p:'.').join('')).join('<br>');
+			debug.innerHTML = gameBoard.map(r=>r.map(p=>p?p:'.').join('')).join('<br>');
 			debug2.innerHTML = `<pre>${JSON.stringify(state, null, 2)}</pre>`;
 		});
 
