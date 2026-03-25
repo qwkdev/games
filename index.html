@@ -565,7 +565,7 @@
 		]
 
 		function endGame(code) {
-
+			console.log(code);
 		}
 		
 
@@ -613,14 +613,12 @@
 			for (const pType of ['n', 'k']) {
 				for (const [df, dr] of moveDeltas[pType]) {
 					const potential = getBoard(kingPos[0] + df, kingPos[1] + dr, board);
-					if (potential === null) break;
-					if (potential !== '') {
-						if (
-							color !== getColor(potential) &&
-							potential.toLowerCase() === pType
-						) return true;
-						break;
-					}
+					if (
+						potential &&
+						potential !== '' &&
+						color !== getColor(potential) &&
+						potential.toLowerCase() === pType
+					) return true;
 				}
 			}
 
