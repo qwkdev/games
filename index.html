@@ -421,7 +421,7 @@
 		</div> -->
 	</div>
 
-	<div id="result-wrapper" hiddden>
+	<div id="result-wrapper" hidden>
 		<div id="result">
 			<div id="condition">
 				<h1>White Wins</h1>
@@ -442,6 +442,7 @@
 		const boardEl = document.getElementById('board');
 		const state = {
 			turn: 0,
+			halfmoves: 0,
 			selected: null,
 			check: false,
 			castling: {
@@ -466,6 +467,17 @@
 			['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
 			['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
 		];
+
+		// const gameBoard = [
+		// 	["r", "n", "" , "" , "r", "b", "" , "" ],
+		// 	["p", "p", "p", "" , "k", "p", "p", "p"],
+		// 	["" , "" , "" , "" , "" , "" , "" , "" ],
+		// 	["" , "P", "" , "" , "" , "B", "" , "" ],
+		// 	["" , "" , "" , "" , "" , "" , "N", "P"],
+		// 	["Q", "" , "P", "R", "" , "" , "P", "" ],
+		// 	["P", "" , "" , "P", "P", "n", "" , "P"],
+		// 	["R", "N", "B", "" , "K", "" , "" , "" ]
+		// ];
 
 		function clearPieces() {
 			document.querySelectorAll('.piece').forEach(p => p.remove());
@@ -558,11 +570,13 @@
 			['w', 'Timeout'],
 			['b', 'Timeout'],
 			[null, 'Stalemate'],
-			[null, 'Insufficient Material'],
-			[null, '50 Move Rule'],
-			[null, 'Repetition'],
+			[null, 'Insufficient Material'], // TODO
+			[null, '50 Move Rule'], // TODO
+			[null, 'Repetition'], // TODO
 			[null, 'Agreement']
 		]
+
+		//! PAWN JUMP OVER PIECE
 
 		const resultCondition = document.getElementById('condition');
 		const results = {
@@ -571,11 +585,14 @@
 			reason: resultCondition.querySelector('h2')
 		}
 		function endGame(code) {
-			
+			// Maybe change to queue ending?, which is then checked AFTER the piece move?
+			// (If any post processing is done after makeMove()
+			const [winner, reason] = winConditions[code];
+			results.winner.innerText = winner ? (winner === 'w' ? 'White' : 'Black') + ' Wins' : 'Draw';
+			results.reason.innerText = 'By ' + reason;
+			results.wrapper.hidden = false;
 		}
 		
-
-
 		const pieceValues = {
 			p: 1,
 			n: 3,
@@ -631,20 +648,31 @@
 			return false;
 		}
 
-		function checkLegal(color, board=gameBoard) {
+		async function checkLegal(color, board=gameBoard) {
 			for (let r = 0; r < 8; r++) {
 				const rank = board[r];
 				for (let f = 0; f < 8; f++) {
 					const piece = board[r][f];
-
 					if (getColor(piece) !== color) continue;
 
-					const legal = getLegalMoves({ f: f+1, r: 8-r }, true);
+					const legal = await getLegalMoves({ f: f+1, r: 8-r }, true);
 					if (legal) return true;
 				}
 			}
 
 			return false;
+		}
+
+		function checkInsufficient() {
+			for (let r = 0; r < 8; r++) {
+				const rank = board[r];
+				for (let f = 0; f < 8; f++) {
+					const piece = board[r][f];
+					const color = getColor(piece);
+
+					
+				}
+			}
 		}
 
 		function simpleMove(from, to) {
@@ -750,11 +778,18 @@
 
 			state.check = checkCheck(gameBoard, opponentColor);
 
-			const legal = checkLegal(opponentColor);
+			const legal = await checkLegal(opponentColor);
 			if (!legal) {
 				if (state.check) endGame(color === 'w' ? 0 : 1);
-				else endGame(5);
+				else endGame(6);
 			}
+
+			if (pType === 'p' || capture) state.halfmoves = 0;
+			else state.halfmoves++;
+
+			if (state.halfmoves >= 100) endGame(8);
+
+			checkInsufficient();
 
 			return [true, capture ? capture : null];
 		}
@@ -787,13 +822,14 @@
 				const dir = color === 'w' ? 1 : -1;
 				if (getBoard(pos.f, pos.r + dir) === '') {
 					moves.push([pos.f, pos.r + dir]);
-				}
-				if ((pos.r === 2 && dir === 1) || (pos.r === 7 && dir === -1)) {
-					if (getBoard(pos.f, pos.r + 2 * dir) === '') {
-						moves.push([pos.f, pos.r + 2 * dir]);
+
+					if ((pos.r === 2 && dir === 1) || (pos.r === 7 && dir === -1)) {
+						if (getBoard(pos.f, pos.r + 2 * dir) === '') {
+							moves.push([pos.f, pos.r + 2 * dir]);
+						}
 					}
 				}
-
+				
 				const potentialCaptures = [
 					[pos.f + 1, pos.r + dir],
 					[pos.f - 1, pos.r + dir]
@@ -846,7 +882,9 @@
 
 			if (exists) {
 				for (const m of moves) {
-					if (!(await validMove(pos, { f: m[0], r: m[1] }, color))) return true;
+					if (await validMove(pos, { f: m[0], r: m[1] }, color)) {
+						return true;
+					}
 				}
 				return false;
 			}
