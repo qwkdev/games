@@ -421,7 +421,7 @@
 		</div> -->
 	</div>
 
-	<div id="result-wrapper" hidden>
+	<div id="result-wrapper" hiddden>
 		<div id="result">
 			<div id="condition">
 				<h1>White Wins</h1>
@@ -564,8 +564,14 @@
 			[null, 'Agreement']
 		]
 
+		const resultCondition = document.getElementById('condition');
+		const results = {
+			wrapper: document.getElementById('result-wrapper'),
+			winner: resultCondition.querySelector('h1'),
+			reason: resultCondition.querySelector('h2')
+		}
 		function endGame(code) {
-			console.log(code);
+			
 		}
 		
 
