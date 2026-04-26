@@ -298,7 +298,7 @@
 
 
 
-		#debug, #debug2 {
+		#debug, #debug2, #debug3 {
 			position: absolute;
 			top: 0;
 			left: 0;
@@ -307,6 +307,7 @@
 			font-size: 20px;
 		}
 		#debug2 { left: 20%; font-size: 12px; }
+		#debug3 { left: 50%; font-size: 12px; }
 
 		@media only screen and (min-aspect-ratio: 1/1) {
 			:root {
@@ -323,6 +324,7 @@
 <body>
 	<p id="debug"></p>
 	<p id="debug2"></p>
+	<p id="debug3"></p>
 
 	<svg style="display: none">
 		<symbol id="icon-check" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -436,6 +438,8 @@
 	</div>
 
 	<script>
+		// TODO: Load FEN, Load TCN
+
 		// file => x
 		// rank => y
 
@@ -455,7 +459,12 @@
 					q: true
 				}
 			},
-			enpassant: null
+			enpassant: null,
+			history: {
+				s: [],
+				p: [],
+				b: []
+			}
 		}
 		const gameBoard = [
 			['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
@@ -506,6 +515,13 @@
 					boardEl.appendChild(piece);
 				});
 			});
+		}
+
+		function getSquareColor(f, r) {
+			return (r - (f % 2)) % 2 == 0;
+		}
+		function getSquareName(f, r) {
+			return 'abcdefg'[f-1] + String(r);
 		}
 
 		function getColor(piece) {
@@ -570,8 +586,8 @@
 			['w', 'Timeout'],
 			['b', 'Timeout'],
 			[null, 'Stalemate'],
-			[null, 'Insufficient Material'], // TODO
-			[null, '50 Move Rule'], // TODO
+			[null, 'Insufficient Material'],
+			[null, '50 Move Rule'],
 			[null, 'Repetition'], // TODO
 			[null, 'Agreement']
 		]
@@ -584,10 +600,15 @@
 			winner: resultCondition.querySelector('h1'),
 			reason: resultCondition.querySelector('h2')
 		}
+
+		let gameEnded = null;
 		function endGame(code) {
-			// Maybe change to queue ending?, which is then checked AFTER the piece move?
-			// (If any post processing is done after makeMove()
-			const [winner, reason] = winConditions[code];
+			if (gameEnded !== null) return;
+			gameEnded = code;
+		}
+		function checkGameEnded() {
+			if (gameEnded === null) return;
+			const [winner, reason] = winConditions[gameEnded];
 			results.winner.innerText = winner ? (winner === 'w' ? 'White' : 'Black') + ' Wins' : 'Draw';
 			results.reason.innerText = 'By ' + reason;
 			results.wrapper.hidden = false;
@@ -663,16 +684,48 @@
 			return false;
 		}
 
-		function checkInsufficient() {
+		function checkInsufficient(end=true, board=gameBoard) {
+			let found = {
+				w: [],
+				b: []
+			};
 			for (let r = 0; r < 8; r++) {
 				const rank = board[r];
 				for (let f = 0; f < 8; f++) {
 					const piece = board[r][f];
+					if (!piece) continue;
+
+					const pType = piece.toLowerCase();
 					const color = getColor(piece);
 
-					
+					if (['p', 'r', 'q'].includes(pType)) {
+						return true;
+					}
+
+					found[color].push([pType, getSquareColor(8-f, r+1)]);
+
+					if (
+						found.w.length > 1 &&
+						found.b.length > 1 &&
+						(
+							found.w.length !== 2 ||
+							found.b.length !== 2 ||
+							!(found.w.map(e => e[0]).includes('k') && found.w.map(e => e[0]).includes('b')) ||
+							!(found.b.map(e => e[0]).includes('k') && found.b.map(e => e[0]).includes('b')) ||
+							(found.w[0][0] === 'b' ? found.w[0][1] : found.w[1][1]) === (found.b[0][0] === 'b' ? found.b[0][1] : found.b[1][1])
+						)
+					) {
+						return true;
+					}
 				}
 			}
+
+			if (end) endGame(7);
+			return false;
+		}
+
+		function logMove(from, to) {
+			state.history.s.push([[from.f, from.r], [to.f, to.r]]);
 		}
 
 		function simpleMove(from, to) {
@@ -784,12 +837,14 @@
 				else endGame(6);
 			}
 
+			logMove(from, to);
+
 			if (pType === 'p' || capture) state.halfmoves = 0;
 			else state.halfmoves++;
 
 			if (state.halfmoves >= 100) endGame(8);
-
 			checkInsufficient();
+			checkGameEnded();
 
 			return [true, capture ? capture : null];
 		}
@@ -1018,9 +1073,12 @@
 
 		const debug = document.getElementById('debug');
 		const debug2 = document.getElementById('debug2');
+		const debug3 = document.getElementById('debug3');
 		setInterval(() => {
 			debug.innerHTML = gameBoard.map(r=>r.map(p=>p?p:'.').join('')).join('<br>');
-			debug2.innerHTML = `<pre>${JSON.stringify(state, null, 2)}</pre>`;
+			const { history, ...s } = state;
+			debug2.innerHTML = `<pre>${JSON.stringify(s, null, 2)}</pre>`;
+			debug3.innerHTML = history.s.map(e => `<p>${getSquareName(...e[0])} &rarr; ${getSquareName(...e[1])}</p>`).join('');
 		});
 
 		// setTimeout(() => {
