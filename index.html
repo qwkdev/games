@@ -438,15 +438,18 @@
 	</div>
 
 	<script>
-		// TODO: Load FEN, Load TCN
+		// TODO: Load TCN
+		// TODO: Calc game state BEFORE *visually* moving piece (for animations)
+		// TODO: Maybe queue visual move(s)/remove(s)? Rather than rewriting to sim everything
 
 		// file => x
 		// rank => y
 
 		const boardEl = document.getElementById('board');
 		const state = {
-			turn: 0,
+			turn: 'w',
 			halfmoves: 0,
+			fmr: 0,
 			selected: null,
 			check: false,
 			castling: {
@@ -461,12 +464,12 @@
 			},
 			enpassant: null,
 			history: {
-				s: [],
-				p: [],
-				b: []
+				square: [],
+				piece: [], //! TODO
+				state: []
 			}
 		}
-		const gameBoard = [
+		let gameBoard = [
 			['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
 			['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
 			['',  '',  '',  '',  '',  '',  '',  ''],
@@ -477,7 +480,7 @@
 			['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
 		];
 
-		// const gameBoard = [
+		// let gameBoard = [
 		// 	["r", "n", "" , "" , "r", "b", "" , "" ],
 		// 	["p", "p", "p", "" , "k", "p", "p", "p"],
 		// 	["" , "" , "" , "" , "" , "" , "" , "" ],
@@ -517,11 +520,76 @@
 			});
 		}
 
+		function loadFEN(fen, includeState=true, board=gameBoard) {
+			board = Array.from({ length: 8 }, () => Array(8).fill(''));
+
+			const pieces = fen.split(' ');
+			pieces[0].split('/').forEach((l, n) => {
+				let row = [];
+				l.forEach(c => {
+					if ('pnbrqkPNBRQK'.includes(c)) row.push(c)
+					else row.push(...Array(Number(c)).fill(''));
+				});
+				board[n] = row.slice(0, 8);
+			});
+
+			if (includeState) {
+				state.turn = pieces[1];
+				state.castling.w.k == pieces[2].includes('K');
+				state.castling.w.q == pieces[2].includes('Q');
+				state.castling.b.k == pieces[2].includes('k');
+				state.castling.b.q == pieces[2].includes('q');
+				state.enpassant = pieces[3] === '-' ? null : {
+					color: state.turn === 'w' ? 'b' : 'w',
+					...getNameSquare(pieces[3])
+				};
+				state.fmr = Number(pieces[4]);
+				state.halfmoves = Number(pieces[5])*2 - (state.turn === 'w' ? 2 : 1);
+			}
+		}
+		function getFEN(includeState=true, board=gameBoard) {
+			let fen = [[]];
+			board.forEach(r => {
+				let temp = [];
+				r.forEach(p => {
+					if (p === '') {
+						if (typeof temp.at(-1) !== 'number') temp.push(1)
+						else temp[temp.length - 1]++;
+					} else temp.push(p);
+				});
+				fen[0].push(temp.map(String).join(''));
+			});
+			fen[0] = fen[0].join('/');
+
+			if (includeState) {
+				fen.push(state.turn);
+
+				let castling = '';
+				if (state.castling.w.k) castling += 'K';
+				if (state.castling.w.q) castling += 'Q';
+				if (state.castling.b.k) castling += 'k';
+				if (state.castling.b.q) castling += 'q';
+				fen.push(castling ?? '-');
+
+				fen.push(state.enpassant === null ? '-' : getSquareName(state.enpassant.f, state.enpassant.r));
+				fen.push(String(state.fmr));
+
+				fen.push(String(Math.floor(
+					(state.halfmoves + (state.turn === 'w' ? 2 : 1)) / 2
+				)));
+			}
+
+			return fen.join(' ');
+		}
+
 		function getSquareColor(f, r) {
 			return (r - (f % 2)) % 2 == 0;
 		}
 		function getSquareName(f, r) {
 			return 'abcdefg'[f-1] + String(r);
+		}
+		function getNameSquare(s) {
+			return { f: 'abcdefg'.indexOf(s[0])+1, r: Number(s[1])};
 		}
 
 		function getColor(piece) {
@@ -591,8 +659,6 @@
 			[null, 'Repetition'], // TODO
 			[null, 'Agreement']
 		]
-
-		//! PAWN JUMP OVER PIECE
 
 		const resultCondition = document.getElementById('condition');
 		const results = {
@@ -676,7 +742,7 @@
 					const piece = board[r][f];
 					if (getColor(piece) !== color) continue;
 
-					const legal = await getLegalMoves({ f: f+1, r: 8-r }, true);
+					const legal = await getLegalMoves({ f: f+1, r: 8-r }, false, true);
 					if (legal) return true;
 				}
 			}
@@ -725,7 +791,14 @@
 		}
 
 		function logMove(from, to) {
-			state.history.s.push([[from.f, from.r], [to.f, to.r]]);
+			state.history.square.push([[from.f, from.r], [to.f, to.r]]);
+
+			const { history, ...s } = state;
+			state.history.state.push([getFEN(false), s]);
+
+			state.halfmoves++;
+			state.turn = state.turn === 'w' ? 'b' : 'w';
+			
 		}
 
 		function simpleMove(from, to) {
@@ -839,10 +912,10 @@
 
 			logMove(from, to);
 
-			if (pType === 'p' || capture) state.halfmoves = 0;
-			else state.halfmoves++;
+			if (pType === 'p' || capture) state.fmr = 0;
+			else state.fmr++;
 
-			if (state.halfmoves >= 100) endGame(8);
+			if (state.fmr >= 100) endGame(8);
 			checkInsufficient();
 			checkGameEnded();
 
@@ -866,11 +939,13 @@
 			return !inCheck;
 		}
 
-		async function getLegalMoves(pos, exists=false) {
+		async function getLegalMoves(pos, forceTurn=true, exists=false) {
 			const piece = getBoard(pos.f, pos.r);
 			if (piece === '') return [];
 			const pType = piece.toLowerCase();
 			const color = getColor(piece);
+
+			if (forceTurn && color !== state.turn) return exists ? false : [];
 
 			let moves = [];
 			if (pType === 'p') {
@@ -1078,7 +1153,7 @@
 			debug.innerHTML = gameBoard.map(r=>r.map(p=>p?p:'.').join('')).join('<br>');
 			const { history, ...s } = state;
 			debug2.innerHTML = `<pre>${JSON.stringify(s, null, 2)}</pre>`;
-			debug3.innerHTML = history.s.map(e => `<p>${getSquareName(...e[0])} &rarr; ${getSquareName(...e[1])}</p>`).join('');
+			debug3.innerHTML = history.square.map(e => `<p>${getSquareName(...e[0])} &rarr; ${getSquareName(...e[1])}</p>`).join('');
 		});
 
 		// setTimeout(() => {
