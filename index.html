@@ -57,6 +57,12 @@
 			user-select: none;
 		}
 
+		@property --tr {
+			syntax: "<angle>";
+			initial-value: 0deg;
+			inherits: false;
+		}
+
 		body {
 			background: var(--bg);
 			overflow: hidden;
@@ -173,6 +179,11 @@
 				calc((var(--f) - 1) * var(--piece)),
 				calc(-1 * (var(--r) - 1) * var(--piece))
 			);
+
+			.piece2 {
+				width: 100%;
+				height: 100%;
+			}
 
 			img {
 				width: 100%;
@@ -296,7 +307,19 @@
 			}
 		}
 
-
+		.anim1 {
+			transition: transform 1s;
+			z-index: 9999 !important;
+			.piece2 {
+				animation: anim1 1s linear;
+				z-index: 9999 !important;
+			}
+		}
+		@keyframes anim1 {
+			0% { transform: rotate(0deg) scale(1); }
+			50% { transform: rotate(180deg) scale(2); }
+			100% { transform: rotate(360deg) scale(1); }
+		}
 
 		#debug, #debug2, #debug3 {
 			position: absolute;
@@ -438,9 +461,13 @@
 	</div>
 
 	<script>
+		async function wait(ms) {
+			return new Promise(r => setTimeout(r, ms));
+		}
+
 		// TODO: Load TCN
-		// TODO: Calc game state BEFORE *visually* moving piece (for animations)
-		// TODO: Maybe queue visual move(s)/remove(s)? Rather than rewriting to sim everything
+		// TODO: Click skips anim to end
+		// TODO: SUPER Broken, no idea how, something to do with check checking system
 
 		// file => x
 		// rank => y
@@ -511,36 +538,40 @@
 					piece.style.setProperty('--f', f + 1);
 					piece.style.setProperty('--r', 8 - r);
 
+					const wrapper = document.createElement('div')
+					wrapper.classList.add('piece2');
+
 					const img = document.createElement('img');
 					img.src = `/img/150/${cell === cell.toLowerCase() ? 'b' : 'w'}${cell.toLowerCase()}.png`;
-					piece.appendChild(img);
+					wrapper.appendChild(img);
 
+					piece.appendChild(wrapper);
 					boardEl.appendChild(piece);
 				});
 			});
 		}
 
-		function loadFEN(fen, includeState=true, board=gameBoard) {
-			board = Array.from({ length: 8 }, () => Array(8).fill(''));
+		function loadFEN(fen, includeState=true) {
+			gameBoard = Array.from({ length: 8 }, () => Array(8).fill(''));
 
 			const pieces = fen.split(' ');
 			pieces[0].split('/').forEach((l, n) => {
 				let row = [];
-				l.forEach(c => {
+				Array.from(l).forEach(c => {
 					if ('pnbrqkPNBRQK'.includes(c)) row.push(c)
 					else row.push(...Array(Number(c)).fill(''));
 				});
-				board[n] = row.slice(0, 8);
+				gameBoard[n] = row.slice(0, 8);
 			});
 
 			if (includeState) {
 				state.turn = pieces[1];
-				state.castling.w.k == pieces[2].includes('K');
-				state.castling.w.q == pieces[2].includes('Q');
-				state.castling.b.k == pieces[2].includes('k');
-				state.castling.b.q == pieces[2].includes('q');
+				state.castling.w.k = pieces[2].includes('K');
+				state.castling.w.q = pieces[2].includes('Q');
+				state.castling.b.k = pieces[2].includes('k');
+				state.castling.b.q = pieces[2].includes('q');
 				state.enpassant = pieces[3] === '-' ? null : {
-					color: state.turn === 'w' ? 'b' : 'w',
+					color: state.turn,
 					...getNameSquare(pieces[3])
 				};
 				state.fmr = Number(pieces[4]);
@@ -586,10 +617,10 @@
 			return (r - (f % 2)) % 2 == 0;
 		}
 		function getSquareName(f, r) {
-			return 'abcdefg'[f-1] + String(r);
+			return 'abcdefgh'[f-1] + String(r);
 		}
 		function getNameSquare(s) {
-			return { f: 'abcdefg'.indexOf(s[0])+1, r: Number(s[1])};
+			return { f: 'abcdefgh'.indexOf(s[0])+1, r: Number(s[1])};
 		}
 
 		function getColor(piece) {
@@ -743,6 +774,7 @@
 					if (getColor(piece) !== color) continue;
 
 					const legal = await getLegalMoves({ f: f+1, r: 8-r }, false, true);
+
 					if (legal) return true;
 				}
 			}
@@ -806,13 +838,28 @@
 			gameBoard[8 - to.r][to.f - 1] = piece;
 			gameBoard[8 - from.r][from.f - 1] = '';
 
-			const pieceEl = getPiece(from.f, from.r);
-			pieceEl.style.setProperty('--f', to.f);
-			pieceEl.style.setProperty('--r', to.r);
+			return getPiece(from.f, from.r);
+		}
+
+		async function animate(ele, num) {
+			ele.classList.add(`anim${num}`);
+			await wait(1000);
+			ele.classList.remove(`anim${num}`);
+		}
+
+		async function showSimpleMove(piece, to) {
+			piece.style.setProperty('--f', to.f);
+			piece.style.setProperty('--r', to.r);
+			if (gameEnded !== null) await animate(piece, 1);
+		}
+		async function showSimpleRemove(piece) {
+			if (gameEnded !== null) await wait(600);
+			piece.remove();
 		}
 
 		async function makeMove(from, to, sim=false) {
 			const moves = [];
+			let queue = [];
 
 			const piece = getBoard(from.f, from.r);
 			let capture = getBoard(to.f, to.r);
@@ -831,7 +878,7 @@
 				to.r === castlingRank &&
 				(to.f === 3 || to.f === 7)
 			) {
-				if (!sim) simpleMove(from, to);
+				if (!sim) queue.push([simpleMove(from, to), to]);
 				moves.push([from, to]);
 
 				const rookMoves = {
@@ -840,22 +887,24 @@
 				};
 
 				const [rookFrom, rookTo] = rookMoves[to.f];
-				if (!sim) simpleMove(rookFrom, rookTo);
+				if (!sim) queue.push([simpleMove(rookFrom, rookTo), rookTo]);
 				moves.push([rookFrom, rookTo]);
 				defaultMove = false;
 			}
 
 			if (!sim && pType === 'p' && to.r === (color === 'w' ? 8 : 1)) {
 				const resp = await promote(color, from, to);
-				if (!resp[0]) return [false, null];
+				if (!resp[1][0]) return [false, null];
 
 				defaultMove = false;
 				defaultCapture = false;
-				capture = resp[1];
+				capture = resp[1][1];
+
+				queue.push(...resp[0]);
 			}
 
 			if (!sim && defaultCapture && capture) {
-				getPiece(to.f, to.r).remove();
+				queue.push([getPiece(to.f, to.r), null]);
 			}
 
 			if (
@@ -867,12 +916,12 @@
 				to.r === state.enpassant.r
 			) {
 				capture = getBoard(to.f, to.r + (color === 'w' ? -1 : 1));
-				getPiece(to.f, to.r + (color === 'w' ? -1 : 1)).remove();
+				queue.push([getPiece(to.f, to.r + (color === 'w' ? -1 : 1)), null]);
 				gameBoard[8 - (to.r + (color === 'w' ? -1 : 1))][to.f - 1] = '';
 			}
 
 			if (defaultMove) {
-				if (!sim) simpleMove(from, to);
+				if (!sim) queue.push([simpleMove(from, to), to]);
 				moves.push([from, to]);
 			}
 
@@ -910,13 +959,19 @@
 				else endGame(6);
 			}
 
-			logMove(from, to);
-
 			if (pType === 'p' || capture) state.fmr = 0;
 			else state.fmr++;
 
 			if (state.fmr >= 100) endGame(8);
 			checkInsufficient();
+
+			for (const [e, to] of queue) {
+				if (to === null) showSimpleRemove(e);
+				else await showSimpleMove(e, to);
+			}
+
+			logMove(from, to);
+
 			checkGameEnded();
 
 			return [true, capture ? capture : null];
@@ -1113,8 +1168,9 @@
 			}
 
 			const piece = pTo[0] === 'w' ? pTo[1].toUpperCase() : pTo[1];
+			let queue = [];
 			let capture = getBoard(to.f, to.r);
-			if (capture) getPiece(to.f, to.r).remove();
+			if (capture) queue.push([getPiece(to.f, to.r), null]);
 
 			gameBoard[8 - to.r][to.f - 1] = piece;
 			gameBoard[8 - from.r][from.f - 1] = '';
@@ -1127,7 +1183,7 @@
 			promotion.w.hidden = true;
 			promotion.b.hidden = true;
 
-			return [true, capture];
+			return [queue, [true, capture]];
 		}
 
 		document.querySelectorAll('#squares div').forEach(s => s.onclick = handleClick);
@@ -1144,6 +1200,14 @@
 			}
 		});
 
+		// loadFEN('rnbqkbnr/1ppp1ppp/8/4p2Q/p1B1P3/8/PPPP1PPP/RNB1K1NR', false);
+		// loadFEN('rnbqkbnr/1ppp2pp/8/4p3/p1B1P3/5Q2/PPPP1PPP/RNB1K1NR', false);
+
+		// loadFEN('r3k2r/pbppqpb1/1pn3p1/7p/1N2pPn1/1PP4N/PB1P2PP/2QRKR2 b kq f3 0 1')
+
+		// loadFEN('kn6/8/8/8/8/8/5Q2/6NK', false);
+
+		loadFEN('4k3/8/4K3/4P3/8/8/8/8 w - - 0 1');
 		loadBoard(gameBoard);
 
 		const debug = document.getElementById('debug');
