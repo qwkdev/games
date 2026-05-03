@@ -284,9 +284,9 @@
 					height: calc(5 * var(--u));
 
 					.btn {
-						--h: 0;
-						--s: 0;
-						--l: .57;
+						--h: 240;
+						--s: calc(0.01/0.83);
+						--l: calc(0.37/0.57);
 					}
 				}
 				#watermark {
@@ -612,6 +612,20 @@
 
 			return fen.join(' ');
 		}
+		function encodeRepitionInfo(state=state) {
+			let fen = [];
+			fen.push(state.turn);
+
+			let castling = '';
+			if (state.castling.w.k) castling += 'K';
+			if (state.castling.w.q) castling += 'Q';
+			if (state.castling.b.k) castling += 'k';
+			if (state.castling.b.q) castling += 'q';
+			fen.push(castling ?? '-');
+
+			fen.push(state.enpassant === null ? '-' : getSquareName(state.enpassant.f, state.enpassant.r));
+			return fen.join(' ');
+		}
 
 		function getSquareColor(f, r) {
 			return (r - (f % 2)) % 2 == 0;
@@ -687,7 +701,7 @@
 			[null, 'Stalemate'],
 			[null, 'Insufficient Material'],
 			[null, '50 Move Rule'],
-			[null, 'Repetition'], // TODO
+			[null, 'Repetition'],
 			[null, 'Agreement']
 		]
 
@@ -757,10 +771,22 @@
 					if (
 						potential &&
 						potential !== '' &&
-						color !== getColor(potential) &&
-						potential.toLowerCase() === pType
+						potential.toLowerCase() === pType &&
+						color !== getColor(potential)
 					) return true;
 				}
+			}
+			for (const [df, dr] of [
+				[1, color === 'w' ? 1 : -1],
+				[-1, color === 'w' ? 1 : -1]
+			]) {
+				const potential = getBoard(kingPos[0] + df, kingPos[1] + dr, board);
+				if (
+					potential &&
+					potential !== '' &&
+					potential.toLowerCase() === 'p' &&
+					color !== getColor(potential)
+				) return true;
 			}
 
 			return false;
@@ -800,20 +826,14 @@
 						return true;
 					}
 
-					found[color].push([pType, getSquareColor(8-f, r+1)]);
+					found[color].push(pType === 'b' ? (getSquareColor(8-f, r+1) ? 'B' : 'b') : pType);
 
-					if (
-						found.w.length > 1 &&
-						found.b.length > 1 &&
-						(
-							found.w.length !== 2 ||
-							found.b.length !== 2 ||
-							!(found.w.map(e => e[0]).includes('k') && found.w.map(e => e[0]).includes('b')) ||
-							!(found.b.map(e => e[0]).includes('k') && found.b.map(e => e[0]).includes('b')) ||
-							(found.w[0][0] === 'b' ? found.w[0][1] : found.w[1][1]) === (found.b[0][0] === 'b' ? found.b[0][1] : found.b[1][1])
-						)
-					) {
-						return true;
+					if (found.w.length + found.b.length >= 4) {
+						const combined = [...found.w, ...found.b].filter(e => e !== 'k');
+						if (combined.length >= 0) {
+							const first = combined[0];
+							if (!combined.every(e => e === first) || first == 'n') return true;
+						}
 					}
 				}
 			}
@@ -822,11 +842,32 @@
 			return false;
 		}
 
+		function getAlgebraic(from, to) {
+
+		}
+
 		function logMove(from, to) {
 			state.history.square.push([[from.f, from.r], [to.f, to.r]]);
 
 			const { history, ...s } = state;
-			state.history.state.push([getFEN(false), s]);
+			const current = getFEN(false);
+			state.history.state.push([current, s]);
+
+			if (
+				state.history.state.length >= 9 &&
+				[5, 9].every(d => state.history.state.at(-d)[0] === current)
+			) endGame(9);
+
+			const checktfr = current + encodeRepitionInfo();
+			let count = 0;
+			for (let i=3; i < state.fmr; i+=2) {
+				const pos = state.history.state.at(-i);
+				if (pos[0] + encodeRepitionInfo(pos[1]) === checktfr) count++;
+				if (count >= 2) {
+					endGame(9);
+					break;
+				} //! TODO: TEST + BOUNDS
+			}
 
 			state.halfmoves++;
 			state.turn = state.turn === 'w' ? 'b' : 'w';
@@ -965,12 +1006,12 @@
 			if (state.fmr >= 100) endGame(8);
 			checkInsufficient();
 
+			logMove(from, to);
+
 			for (const [e, to] of queue) {
 				if (to === null) showSimpleRemove(e);
 				else await showSimpleMove(e, to);
 			}
-
-			logMove(from, to);
 
 			checkGameEnded();
 
@@ -1205,9 +1246,11 @@
 
 		// loadFEN('r3k2r/pbppqpb1/1pn3p1/7p/1N2pPn1/1PP4N/PB1P2PP/2QRKR2 b kq f3 0 1')
 
-		// loadFEN('kn6/8/8/8/8/8/5Q2/6NK', false);
+		// loadFEN('kb6/8/8/8/8/8/5Q2/6BK', false);
 
-		loadFEN('4k3/8/4K3/4P3/8/8/8/8 w - - 0 1');
+		// loadFEN('kb1b4/8/8/8/8/8/8/6QK', false);
+
+		// loadFEN('4k3/8/4K3/4P3/8/8/8/8 w - - 0 1');
 		loadBoard(gameBoard);
 
 		const debug = document.getElementById('debug');
